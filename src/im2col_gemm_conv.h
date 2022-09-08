@@ -1,22 +1,25 @@
 #ifndef IM2COL_GEMM_CONV_H
 #define IM2COL_GEMM_CONV_H
 
-void im2col(unsigned input_n, unsigned input_c, unsigned input_h, unsigned input_w,
-            unsigned output_c, unsigned kernel_h, unsigned kernel_w,
-            unsigned stride_h, unsigned stride_w,
-            unsigned pad_h, unsigned pad_w,
-            unsigned dialation_h, unsigned dialation_w,
-            unsigned group_count,
-            const float *x, float *y);
+template <typename Tin>
+void im2col(int input_n, int input_c, int input_h, int input_w,
+            int output_c, int kernel_h, int kernel_w,
+            int stride_h, int stride_w,
+            int pad_h, int pad_w,
+            int dilation_h, int dilation_w,
+            int group_count,
+            const void *x, void *y);
 
-void sgemm(unsigned m, unsigned n, unsigned k, const float *a, const float *b, float c);
+template <typename Tin, typename Tw, typename Tacc, typename Tout>
+void sgemm(int m, int n, int k, const void *a, const void *b, float c);
 
-void implict_precomp_sgemm(unsigned input_n, unsigned input_c, unsigned input_h, unsigned input_w,
-                           unsigned output_c, unsigned kernel_h, unsigned kernel_w,
-                           unsigned stride_h, unsigned stride_w,
-                           unsigned pad_h, unsigned pad_w,
-                           unsigned dialation_h, unsigned dialation_w,
-                           unsigned group_count,
-                           const float *x, const float *w, const float *bias, float *y);
+template <typename Tin, typename Tw, typename Tacc, typename Tout>
+void implict_precomp_sgemm(int input_n, int input_c, int input_h, int input_w,
+                           int output_c, int kernel_h, int kernel_w,
+                           int stride_h, int stride_w,
+                           int pad_h, int pad_w,
+                           int dilation_h, int dilation_w,
+                           int group_count,
+                           const void *x, const void *w, const void *bias, void *y);
 
 #endif

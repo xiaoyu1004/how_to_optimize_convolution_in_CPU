@@ -1,12 +1,13 @@
 #ifndef NAIVE_CONV_H
 #define NAIVE_CONV_H
 
-void naive_conv(unsigned input_n, unsigned input_c, unsigned input_h, unsigned input_w,
-                unsigned output_c, unsigned kernel_h, unsigned kernel_w,
-                unsigned stride_h, unsigned stride_w,
-                unsigned pad_h, unsigned pad_w,
-                unsigned dialation_h, unsigned dialation_w,
-                unsigned group_count,
-                const float *x, const float *w, const float *bias, float *y);
+template <typename Tin, typename Tw, typename Tacc, typename Tout>
+void naive_conv(int input_n, int input_c, int input_h, int input_w,
+                int output_c, int kernel_h, int kernel_w,
+                int stride_h, int stride_w,
+                int pad_h, int pad_w,
+                int dilation_h, int dilation_w,
+                int group_count,
+                const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr);
 
 #endif
