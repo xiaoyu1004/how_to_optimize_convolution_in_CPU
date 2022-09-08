@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "naive_conv.h"
+#include "im2col_gemm_conv.h"
 
 #include <iostream>
 
@@ -28,6 +29,13 @@ void conv2d(int input_n, int input_c, int input_h, int input_w,
     }
     else if (algo == CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM)
     {
+        implict_precomp_sgemm<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
+                                                   output_c, kernel_h, kernel_w,
+                                                   stride_h, stride_w,
+                                                   pad_h, pad_w,
+                                                   dilation_h, dilation_w,
+                                                   group_count,
+                                                   x, w, bias, y);
     }
     else
     {
