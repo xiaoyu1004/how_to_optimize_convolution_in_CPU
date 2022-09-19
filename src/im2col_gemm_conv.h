@@ -11,7 +11,7 @@ void im2col(int input_n, int input_c, int input_h, int input_w,
             const void *x, void *y);
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
-void sgemm(int m, int n, int k, const void *a, const void *b, float c);
+void sgemm(int M, int N, int K, const void *a, const void *b, const void *bias, void *c);
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
 void implict_precomp_sgemm(int input_n, int input_c, int input_h, int input_w,
