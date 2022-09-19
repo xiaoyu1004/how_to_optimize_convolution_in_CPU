@@ -11,8 +11,8 @@ void naive_conv(int input_n, int input_c, int input_h, int input_w,
 {
     const Tin *input_data = static_cast<const Tin *>(input_ptr);
     const Tw *weight_data = static_cast<const Tw *>(weight_ptr);
-    Tout *output_data = static_cast<Tout *>(output_ptr);
     const Tacc *bias_data = static_cast<const Tacc *>(bias);
+    Tout *output_data = static_cast<Tout *>(output_ptr);
 
     int khd = (kernel_h - 1) * dilation_h + 1;
     int kwd = (kernel_w - 1) * dilation_w + 1;
