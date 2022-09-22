@@ -7,6 +7,8 @@ set(srcs src/Main.cpp
          src/naive_conv.cpp)
 add_executable(${PROJECT_NAME} ${srcs})
 
+add_executable(shfl_test src/cuda/shfl_test.cu)
+
 add_executable(cudnn_test src/cudnn/cudnn_test.cpp)
 target_link_libraries(cudnn_test PRIVATE cudart cudnn)
 # 设置MT/MTd

@@ -26,18 +26,18 @@ int main()
 {
     // define size
     int input_n = 1;
-    int input_c = 3;
-    int input_h = 256;
-    int input_w = 256;
+    int input_c = 1;
+    int input_h = 4;
+    int input_w = 4;
 
-    int output_c = 2;
+    int output_c = 1;
     int kernel_h = 3;
     int kernel_w = 3;
 
     int stride_h = 1;
     int stride_w = 1;
-    int pad_h = 1;
-    int pad_w = 1;
+    int pad_h = 0;
+    int pad_w = 0;
     int dilation_h = 1;
     int dilation_w = 1;
     int group = 1;
@@ -59,16 +59,24 @@ int main()
 
     // malloc host memory
     float *h_input_ptr = new float[input_num]{0};
+    std::cout << "h_input_ptr: ";
     for (int i = 0; i < input_num; ++i)
     {
-        h_input_ptr[i] = (i % 5) * 0.5f;
+        // h_input_ptr[i] = (i % 5) * 0.5f;
+        h_input_ptr[i] = i;
+        std::cout << i << "\t";
     }
+    std::cout << "\n";
 
     float *h_filter_ptr = new float[filter_num]{0};
+    std::cout << "h_filter_ptr: ";
     for (int i = 0; i < filter_num; ++i)
     {
-        h_filter_ptr[i] = (i % 5) * 0.5f;
+        // h_filter_ptr[i] = (i % 5) * 0.5f;
+        h_filter_ptr[i] = i;
+        std::cout << i << "\t";
     }
+    std::cout << "\n";
 
     float *h_output_ptr = new float[output_num]{0};
 
@@ -92,7 +100,7 @@ int main()
     // 3.描述操作并设置相关参数
     cudnnConvolutionDescriptor_t conv_descriptor;
     CUDNN_CHECK(cudnnCreateConvolutionDescriptor(&conv_descriptor));
-    CUDNN_CHECK(cudnnSetConvolution2dDescriptor(conv_descriptor, pad_h, pad_w, stride_h, stride_w, dilation_h, dilation_w, CUDNN_CONVOLUTION , CUDNN_DATA_FLOAT));
+    CUDNN_CHECK(cudnnSetConvolution2dDescriptor(conv_descriptor, pad_h, pad_w, stride_h, stride_w, dilation_h, dilation_w, CUDNN_CROSS_CORRELATION , CUDNN_DATA_FLOAT));
 
     // 4.选择算法
     cudnnConvolutionFwdAlgoPerf_t algo;
@@ -135,6 +143,12 @@ int main()
 
     // 8.将计算结果传回cpu内存
     cudaMemcpy(h_output_ptr, d_output_ptr, output_bytes, cudaMemcpyDeviceToHost);
+    std::cout << "h_output_ptr: ";
+    for (int i = 0; i < output_num; ++i)
+    {
+        std::cout << h_output_ptr[i] << "\t";
+    }
+    std::cout << "\n";
 
     // free memory
     delete []h_input_ptr;
