@@ -1,9 +1,18 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <cuda.h>
+
 #include <cstdint>
 #include <chrono>
 #include <string>
+
+#define CUDA_CHECK(func)                                                           \
+    {                                                                              \
+        cudaError_t e = (func);                                                    \
+        if (e != cudaSuccess)                                                      \
+            printf("%s %d CUDA: %s\n", __FILE__, __LINE__, cudaGetErrorString(e)); \
+    }
 
 class timer
 {
@@ -61,15 +70,19 @@ typedef enum
     CONVOLUTION_FWD_ALGO_UNKNOW
 } ConvolutionFwdAlgo_t;
 
-std::string get_convolution_fwd_str(ConvolutionFwdAlgo_t algo)
+inline std::string get_convolution_fwd_str(ConvolutionFwdAlgo_t algo)
 {
     if (algo == CONVOLUTION_FWD_ALGO_DIRECT)
     {
         return "CONVOLUTION_FWD_ALGO_DIRECT";
     }
-    else if (algo == CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM)
+    else if (algo == CONVOLUTION_FWD_ALGO_GEMM)
     {
-        return "CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM";
+        return "CONVOLUTION_FWD_ALGO_GEMM";
+    }
+    else if (algo == CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM)
+    {
+        return "CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM";
     }
     else
     {

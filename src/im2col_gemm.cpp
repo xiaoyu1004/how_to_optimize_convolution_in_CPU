@@ -1,4 +1,4 @@
-#include "im2col_gemm_conv.h"
+#include "im2col_gemm.h"
 
 #include <cstring>
 #include <intrin.h>
@@ -82,6 +82,7 @@ void sgemm(int m, int n, int k, const void *a, const void *b, const void *bias, 
     int ldb = n;
     int ldc = n;
 
+    /*
     int i = 0;
     int partM = m - m % 4;
     for (; i < partM; i += 4)
@@ -174,34 +175,35 @@ void sgemm(int m, int n, int k, const void *a, const void *b, const void *bias, 
             }
         }
     }
+    */
 
-    // for (int m = 0; m < M; ++m)
-    // {
-    //     for (int n = 0; n < N; ++n)
-    //     {
-    //         Tacc acc = 0;
-    //         for (int k = 0; k < K; ++k)
-    //         {
-    //             acc += (A[m * K + k] * B[k * N + n]);
-    //         }
-    //         if (Bias)
-    //         {
-    //             acc += Bias[m];
-    //         }
-    //         // TODO int8
-    //         C[m * N + n] = acc;
-    //     }
-    // }
+    for (int i = 0; i < m; ++i)
+    {
+        for (int j = 0; j < n; ++j)
+        {
+            Tacc acc = 0;
+            for (int l = 0; l < k; ++l)
+            {
+                acc += (A[i * k + l] * B[l * n + j]);
+            }
+            if (Bias)
+            {
+                acc += Bias[i];
+            }
+            // TODO int8
+            C[i * n + j] = acc;
+        }
+    }
 }
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
-void implict_precomp_sgemm(int input_n, int input_c, int input_h, int input_w,
-                           int output_c, int kernel_h, int kernel_w,
-                           int stride_h, int stride_w,
-                           int pad_h, int pad_w,
-                           int dilation_h, int dilation_w,
-                           int group_count,
-                           const void *x, const void *w, const void *bias, void *y)
+void con2d_gemm(int input_n, int input_c, int input_h, int input_w,
+                 int output_c, int kernel_h, int kernel_w,
+                 int stride_h, int stride_w,
+                 int pad_h, int pad_w,
+                 int dilation_h, int dilation_w,
+                 int group_count,
+                 const void *x, const void *w, const void *bias, void *y)
 {
     const Tin *input_data = static_cast<const Tin *>(x);
     const Tw *weight_data = static_cast<const Tw *>(w);
@@ -230,10 +232,10 @@ void implict_precomp_sgemm(int input_n, int input_c, int input_h, int input_w,
     delete[] im2col_workspace;
 }
 
-template void implict_precomp_sgemm<float, float, float, float>(int input_n, int input_c, int input_h, int input_w,
-                                                                int output_c, int kernel_h, int kernel_w,
-                                                                int stride_h, int stride_w,
-                                                                int pad_h, int pad_w,
-                                                                int dilation_h, int dilation_w,
-                                                                int group_count,
-                                                                const void *x, const void *w, const void *bias, void *y);
+template void con2d_gemm<float, float, float, float>(int input_n, int input_c, int input_h, int input_w,
+                                                      int output_c, int kernel_h, int kernel_w,
+                                                      int stride_h, int stride_w,
+                                                      int pad_h, int pad_w,
+                                                      int dilation_h, int dilation_w,
+                                                      int group_count,
+                                                      const void *x, const void *w, const void *bias, void *y);

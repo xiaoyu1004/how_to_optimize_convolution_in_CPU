@@ -1,16 +1,25 @@
 #include <stdio.h>
 
-__global__ void bcast(int arg) 
+__global__ void bcast(int arg1, int arg2) 
 {
     int laneId = threadIdx.x & 0x1f;
     int value;
     if (laneId == 0)        // Note unused variable for
-        value = arg;        // all threads except lane 0
-    value = __shfl_sync(0xffffffff, value, 0);   // Synchronize all threads in warp, and get "value" from lane 0
-    if (value != arg)
-        printf("Thread %d failed.\n", threadIdx.x);
+    {
+        value = arg1;        // all threads except lane 0
+    }
+    else if (laneId == 1)
+    {
+        value = arg2;
+    }
     else
-        printf("Thread %d get val success val: %d.\n", threadIdx.x, value);
+    {
+        value = 0;
+    }
+
+    value = __shfl_sync(0xffffffff, value, laneId / 16);   // Synchronize all threads in warp, and get "value" from lane 0
+
+    printf("Thread %d get val success val: %d.\n", threadIdx.x, value);
 }
 
 // int main() 
@@ -68,8 +77,11 @@ __global__ void warpReduce()
 
 int main() 
 {
-    warpReduce<<< 1, 32 >>>();
+    bcast<<< 1, 32 >>>(1, 2);
     cudaDeviceSynchronize();
+
+    // warpReduce<<< 1, 32 >>>();
+    // cudaDeviceSynchronize();
 
     return 0;
 }
