@@ -1,7 +1,7 @@
 #include "common.h"
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
-void con2d_implicit_gemm(int input_n, int input_c, int input_h, int input_w,
+void implicit_conv2d_cpu(int input_n, int input_c, int input_h, int input_w,
                          int output_c, int kernel_h, int kernel_w,
                          int stride_h, int stride_w,
                          int pad_h, int pad_w,
@@ -67,7 +67,7 @@ void con2d_implicit_gemm(int input_n, int input_c, int input_h, int input_w,
     }
 }
 
-template void con2d_implicit_gemm<float, float, float, float>(int input_n, int input_c, int input_h, int input_w,
+template void implicit_conv2d_cpu<float, float, float, float>(int input_n, int input_c, int input_h, int input_w,
                                                               int output_c, int kernel_h, int kernel_w,
                                                               int stride_h, int stride_w,
                                                               int pad_h, int pad_w,

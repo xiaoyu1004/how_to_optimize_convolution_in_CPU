@@ -1,13 +1,13 @@
 #include "naive_conv.h"
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
-void naive_conv(int input_n, int input_c, int input_h, int input_w,
-                int output_c, int kernel_h, int kernel_w,
-                int stride_h, int stride_w,
-                int pad_h, int pad_w,
-                int dilation_h, int dilation_w,
-                int group_cnt,
-                const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr)
+void naive_conv_cpu(int input_n, int input_c, int input_h, int input_w,
+                    int output_c, int kernel_h, int kernel_w,
+                    int stride_h, int stride_w,
+                    int pad_h, int pad_w,
+                    int dilation_h, int dilation_w,
+                    int group_cnt,
+                    const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr)
 {
     const Tin *input_data = static_cast<const Tin *>(input_ptr);
     const Tw *weight_data = static_cast<const Tw *>(weight_ptr);
@@ -77,10 +77,10 @@ void naive_conv(int input_n, int input_c, int input_h, int input_w,
     }
 }
 
-template void naive_conv<float, float, float, float>(int input_n, int input_c, int input_h, int input_w,
-                                                     int output_c, int kernel_h, int kernel_w,
-                                                     int stride_h, int stride_w,
-                                                     int pad_h, int pad_w,
-                                                     int dilation_h, int dilation_w,
-                                                     int group_cnt,
-                                                     const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr);
+template void naive_conv_cpu<float, float, float, float>(int input_n, int input_c, int input_h, int input_w,
+                                                         int output_c, int kernel_h, int kernel_w,
+                                                         int stride_h, int stride_w,
+                                                         int pad_h, int pad_w,
+                                                         int dilation_h, int dilation_w,
+                                                         int group_cnt,
+                                                         const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr);

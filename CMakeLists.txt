@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
-project(how_to_optimize_conv_in_cpu LANGUAGES CXX CUDA)
+project(how_to_optimize_conv LANGUAGES CXX CUDA)
 set(CMAKE_CUDA_ARCHITECTURES 86)
+
+option(ENABLE_CUDA "enable cuda" ON)
+option(ENABLE_LOG "enable cuda" ON)
+if(ENABLE_CUDA)
+    add_definitions(-DENABLE_CUDA)
+endif()
+if(ENABLE_LOG)
+    add_definitions(-DENABLE_LOG)
+endif()
 
 set(srcs src/Main.cpp
          src/im2col_gemm.cpp

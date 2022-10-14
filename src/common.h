@@ -1,18 +1,22 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#ifdef ENABLE_CUDA
 #include <cuda.h>
+#endif
 
 #include <cstdint>
 #include <chrono>
 #include <string>
 
+#ifdef ENABLE_CUDA
 #define CUDA_CHECK(func)                                                           \
     {                                                                              \
         cudaError_t e = (func);                                                    \
         if (e != cudaSuccess)                                                      \
             printf("%s %d CUDA: %s\n", __FILE__, __LINE__, cudaGetErrorString(e)); \
     }
+#endif
 
 class timer
 {
