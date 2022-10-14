@@ -1,5 +1,5 @@
 #include "common.h"
-#include "conv2d.hpp"
+#include "conv2d.h"
 
 #include <iostream>
 #include <vector>
@@ -20,18 +20,21 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
 
     int input_size = input_n * input_c * input_h * input_w;
     int weight_size = output_c * input_c * kernel_h * kernel_w;
-    float *x = new float[input_size];
+    float *h_x = new float[input_size];
+    float *d_x;
+    CUDA_CHECK(cudaMalloc(&d_x, input_size * sizeof(float)));
     for (int i = 0; i < input_size; ++i)
     {
-        // x[i] = dist(e);
-        x[i] = Tin(i % 10);
+        h_x[i] = dist(e);
+        // h_x[i] = Tin(i + 1);
     }
+    CUDA_CHECK(cudaMemcpy(d_x, h_x, input_size * sizeof(float), cudaMemcpyHostToDevice));
 
     float *w = new float[weight_size];
     for (int i = 0; i < weight_size; ++i)
     {
-        // w[i] = dist(e);
-        w[i] = Tw(i % 10);
+        w[i] = dist(e);
+        // w[i] = Tw(i + 1);
     }
 
     float *bias = new float[output_c];
@@ -60,32 +63,32 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     // warm
     for (int i = 0; i < warm_cnt; ++i)
     {
-        Conv2dCPU<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
-                                       output_c, kernel_h, kernel_w,
-                                       stride_h, stride_w,
-                                       pad_h, pad_w,
-                                       dilation_h, dilation_w,
-                                       group_count,
-                                       algo,
-                                       x, w, bias, y);
+        conv2d<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
+                                    output_c, kernel_h, kernel_w,
+                                    stride_h, stride_w,
+                                    pad_h, pad_w,
+                                    dilation_h, dilation_w,
+                                    group_count,
+                                    algo,
+                                    x, w, bias, y);
     }
 
     for (int i = 0; i < loop_cnt; ++i)
     {
         t.start();
-        Conv2dCPU<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
-                                       output_c, kernel_h, kernel_w,
-                                       stride_h, stride_w,
-                                       pad_h, pad_w,
-                                       dilation_h, dilation_w,
-                                       group_count,
-                                       algo,
-                                       x, w, bias, y);
+        conv2d<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
+                                    output_c, kernel_h, kernel_w,
+                                    stride_h, stride_w,
+                                    pad_h, pad_w,
+                                    dilation_h, dilation_w,
+                                    group_count,
+                                    algo,
+                                    x, w, bias, y);
         t.stop();
         avg_t += t.get_elapsed_milli_seconds();
     }
     avg_t /= loop_cnt;
-    std::cout << "algo: " << get_convolution_fwd_str(algo) << "\ttime(ms)" << avg_t << " ms" << std::endl;
+    std::cout << get_convolution_fwd_str(algo) << ":\t" << avg_t << " ms" << std::endl;
 
     // for (int i = 0; i < output_h; ++i)
     // {
@@ -109,16 +112,11 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
 int main()
 {
     std::vector<std::vector<int>> test_cases = {
-        // n c h w oc kh kw sh sw ph pw dh dw g
-        // {1, 3, 8, 8, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1},
-        // {1, 3, 8, 8, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
+        // n c h w cout kh kw sh sw ph pw dh dw g
         // {1, 2, 3, 3, 2, 2, 2, 1, 1, 0, 0, 1, 1, 1},
         // {1, 3, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
-        {1, 16, 64, 64, 32, 3, 3, 1, 1, 1, 1, 1, 1, 1}
-    };
-    std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_DIRECT, CONVOLUTION_FWD_ALGO_GEMM, CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
-    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_GEMM};
-    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
+        {1, 32, 640, 640, 32, 3, 3, 1, 1, 1, 1, 1, 1, 1}};
+    std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_DIRECT, CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM};
 
     using Tin = float;
     using Tw = float;
