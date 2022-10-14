@@ -2,9 +2,5 @@
     "breadcrumbs.enabled": false,
     "editor.minimap.enabled": false,
     "files.autoSave": "afterDelay",
-    "editor.fontSize": 16,
-    "files.associations": {
-        "vector": "cpp",
-        "xiosbase": "cpp"
-    }
+    "editor.fontSize": 16
 }
