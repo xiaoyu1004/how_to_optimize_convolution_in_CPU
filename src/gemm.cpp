@@ -29,3 +29,5 @@ void gemm_cpu(int m, int n, int k, const void *a, const void *b, const void *bia
         }
     }
 }
+
+template void gemm_cpu<float, float, float, float>(int m, int n, int k, const void *a, const void *b, const void *bias, void *c);

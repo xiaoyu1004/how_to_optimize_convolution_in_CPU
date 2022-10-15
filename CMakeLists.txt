@@ -1,27 +1,37 @@
 cmake_minimum_required(VERSION 3.10)
 project(how_to_optimize_conv LANGUAGES CXX CUDA)
 set(CMAKE_CUDA_ARCHITECTURES 86)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /NODEFAULTLIB:library")
 
 option(ENABLE_CUDA "enable cuda" ON)
+option(ENABLE_CUDNN "enable cuda" ON)
 option(ENABLE_LOG "enable cuda" ON)
+
 if(ENABLE_CUDA)
     add_definitions(-DENABLE_CUDA)
 endif()
+
+if(ENABLE_CUDNN)
+    add_definitions(-DENABLE_CUDNN)
+endif()
+
 if(ENABLE_LOG)
     add_definitions(-DENABLE_LOG)
 endif()
 
 set(srcs src/Main.cpp
-         src/im2col_gemm.cpp
-         src/implicit_gemm.cpp
+         src/gemm.cpp
+         src/im2col.cpp
+         src/im2col_conv2d.cpp
+         src/implicit_conv2d.cpp
          src/naive_conv.cpp)
+
+if(ENABLE_CUDA)
+    list(APPEND srcs src/cuda/gemm.cu
+                     src/cuda/im2col_conv2d.cu
+                     src/cuda/im2col.cu
+                     src/cuda/naive_conv.cu)
+endif()
 add_executable(${PROJECT_NAME} ${srcs})
-
-# add_executable(shfl_test src/cuda/shfl_test.cu)
-# add_executable(pack4 src/cuda/pack4.cu)
-
-# add_executable(cudnn_test src/cudnn/cudnn_test.cpp)
-# target_link_libraries(cudnn_test PRIVATE cudart cudnn)
-# 设置MT/MTd
-# set_property(TARGET cudnn_test PROPERTY
-#   MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+target_include_directories(${PROJECT_NAME} PRIVATE src)
+target_link_libraries(${PROJECT_NAME} PRIVATE cudnn)

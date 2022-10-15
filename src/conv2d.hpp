@@ -76,6 +76,7 @@ void Conv2dGPU(int input_n, int input_c, int input_h, int input_w,
                                             group_count,
                                             x, w, bias, y);
     }
+    CUDA_CHECK(cudaDeviceSynchronize());
 }
 #endif
 

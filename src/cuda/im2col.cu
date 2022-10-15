@@ -12,7 +12,7 @@ __global__ void im2col_kernel(int num_threads,
                               const void *x, void *y)
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= num_threads) continue;
+    if (tid >= num_threads) return;
 
     const Tin *x_ptr = static_cast<const Tin *>(x);
     Tin *y_ptr = static_cast<Tin *>(y);
@@ -55,11 +55,12 @@ void im2col_gpu(int input_n, int input_c, int input_h, int input_w,
     int output_h = (input_h - khd + 2 * pad_h) / stride_h + 1;
     int output_w = (input_w - kwd + 2 * pad_w) / stride_w + 1;
 
+    int channels_col = input_c * kernel_h * kernel_w;
     int num_threads = channels_col * output_h * output_w;
 
     dim3 dimBlock(1024);
     dim3 dimGrid((num_threads + dimBlock.x - 1) / dimBlock.x);
-    im2col_kernel<Tin><<dimGrid, dimBlock>>>(num_threads
+    im2col_kernel<Tin><<<dimGrid, dimBlock>>>(num_threads,
                                              input_n, input_c, input_h, input_w,
                                              output_c, kernel_h, kernel_w,
                                              output_h, output_w,
@@ -69,3 +70,11 @@ void im2col_gpu(int input_n, int input_c, int input_h, int input_w,
                                              group_count,
                                              x, y);
 }
+
+template void im2col_gpu<float>(int input_n, int input_c, int input_h, int input_w,
+                                int output_c, int kernel_h, int kernel_w,
+                                int stride_h, int stride_w,
+                                int pad_h, int pad_w,
+                                int dilation_h, int dilation_w,
+                                int group_count,
+                                const void *x, void *y);

@@ -1,7 +1,7 @@
 #include "gemm.h"
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
-__global__ void gemm_gpu(int M, int N, int K, const void *a, const void *b, const void *bias, void *c)
+__global__ void gemm_gpu_kernel(int M, int N, int K, const void *a, const void *b, const void *bias, void *c)
 {
     const Tw *A = static_cast<const Tw *>(a);
     const Tin *B = static_cast<const Tin *>(b);
@@ -10,7 +10,7 @@ __global__ void gemm_gpu(int M, int N, int K, const void *a, const void *b, cons
 
     int ix = blockIdx.x * blockDim.x + threadIdx.x;
     int iy = blockIdx.y * blockDim.y + threadIdx.y;
-    if (iy >= M || ix >= N) continue;
+    if (iy >= M || ix >= N) return;
 
     Tacc acc = 0;
     for (int k = 0; k < K; ++k)
@@ -29,5 +29,5 @@ void gemm_gpu(int M, int N, int K, const void *a, const void *b, const void *bia
 {
     dim3 dimBlock(16, 16);
     dim3 dimGrid((N + dimBlock.x - 1) / dimBlock.x, (M + dimBlock.y - 1) / dimBlock.y);
-    gemm_gpu<Tin, Tw, Tacc, Tout><<<dimGrid, dimBlock>>>(M, N, K, a, b, bias, c);
+    gemm_gpu_kernel<Tin, Tw, Tacc, Tout><<<dimGrid, dimBlock>>>(M, N, K, a, b, bias, c);
 }

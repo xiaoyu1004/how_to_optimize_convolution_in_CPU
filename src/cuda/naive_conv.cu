@@ -72,6 +72,11 @@ void naive_conv_gpu(int input_n, int input_c, int input_h, int input_w,
                     int group_count,
                     const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr)
 {
+    int khd = (kernel_h - 1) * dilation_h + 1;
+    int kwd = (kernel_w - 1) * dilation_w + 1;
+    int output_h = (input_h - khd + 2 * pad_h) / stride_h + 1;
+    int output_w = (input_w - kwd + 2 * pad_w) / stride_w + 1;
+
     int output_size = input_n * output_c * output_h * output_w;
     dim3 dimBlock(1024);
     dim3 dimGrid((output_size + dimBlock.x - 1) / dimBlock.x);
@@ -83,3 +88,11 @@ void naive_conv_gpu(int input_n, int input_c, int input_h, int input_w,
                                                                   group_count,
                                                                   input_ptr, weight_ptr, bias, output_ptr);
 }
+
+template void naive_conv_gpu<float, float, float, float>(int input_n, int input_c, int input_h, int input_w,
+                                                         int output_c, int kernel_h, int kernel_w,
+                                                         int stride_h, int stride_w,
+                                                         int pad_h, int pad_w,
+                                                         int dilation_h, int dilation_w,
+                                                         int group_cnt,
+                                                         const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr);

@@ -3,6 +3,11 @@
 
 #ifdef ENABLE_CUDA
 #include <cuda.h>
+#include <cuda_runtime.h>
+#endif
+
+#ifdef ENABLE_CUDNN
+#include <cudnn.h>
 #endif
 
 #include <cstdint>
@@ -10,12 +15,24 @@
 #include <string>
 
 #ifdef ENABLE_CUDA
-#define CUDA_CHECK(func)                                                           \
-    {                                                                              \
-        cudaError_t e = (func);                                                    \
-        if (e != cudaSuccess)                                                      \
-            printf("%s %d CUDA: %s\n", __FILE__, __LINE__, cudaGetErrorString(e)); \
+#define CUDA_CHECK(func)                                                                   \
+    {                                                                                      \
+        cudaError_t e = (func);                                                            \
+        if (e != cudaSuccess)                                                              \
+            printf("%s %d CUDA failure: %s\n", __FILE__, __LINE__, cudaGetErrorString(e)); \
     }
+#endif
+
+#ifdef ENABLE_CUDNN
+#define CUDNN_CHECK(status)                                                                    \
+    do                                                                                         \
+    {                                                                                          \
+        cudnnStatus_t err = (status);                                                          \
+        if (err != CUDNN_STATUS_SUCCESS)                                                       \
+        {                                                                                      \
+            printf("%s %d CUDNN failure: %s\n", __FILE__, __LINE__, cudnnGetErrorString(err)); \
+        }                                                                                      \
+    } while (0)
 #endif
 
 class timer
