@@ -7,13 +7,8 @@ void implicit_conv2d_cpu(int input_n, int input_c, int input_h, int input_w,
                          int pad_h, int pad_w,
                          int dilation_h, int dilation_w,
                          int group_count,
-                         const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr)
+                         const Tin *x, const Tw *w, const Tacc *bias, Tout *y)
 {
-    const Tin *input_data = static_cast<const Tin *>(input_ptr);
-    const Tw *weight_data = static_cast<const Tw *>(weight_ptr);
-    const Tacc *bias_data = static_cast<const Tacc *>(bias);
-    Tout *output_data = static_cast<Tout *>(output_ptr);
-
     int khd = (kernel_h - 1) * dilation_h + 1;
     int kwd = (kernel_w - 1) * dilation_w + 1;
     int output_h = (input_h - khd + 2 * pad_h) / stride_h + 1;
@@ -51,18 +46,18 @@ void implicit_conv2d_cpu(int input_n, int input_c, int input_h, int input_w,
                                 ic * input_h * input_w +
                                 ih * input_w +
                                 iw;
-                result += weight_data[kernel_idx] * input_data[input_idx];
+                result += w[kernel_idx] * x[input_idx];
             }
-            if (bias_data)
+            if (bias)
             {
-                result += bias_data[oc];
+                result += bias[oc];
             }
 
             int output_idx = n * output_c * output_h * output_w +
                              oc * output_h * output_w +
                              oh * output_w +
                              ow;
-            output_data[output_idx] = static_cast<Tout>(result);
+            y[output_idx] = static_cast<Tout>(result);
         }
     }
 }
@@ -73,4 +68,4 @@ template void implicit_conv2d_cpu<float, float, float, float>(int input_n, int i
                                                               int pad_h, int pad_w,
                                                               int dilation_h, int dilation_w,
                                                               int group_cnt,
-                                                              const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr);
+                                                              const float *x, const float *w, const float *bias, float *y);

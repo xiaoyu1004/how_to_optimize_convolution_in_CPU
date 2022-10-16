@@ -8,7 +8,7 @@ void im2col_cpu(int input_n, int input_c, int input_h, int input_w,
                 int pad_h, int pad_w,
                 int dilation_h, int dilation_w,
                 int group_count,
-                const void *x, void *y);
+                const Tin *x, Tin *y);
 
 #ifdef ENABLE_CUDA
 template <typename Tin>
@@ -18,7 +18,7 @@ void im2col_gpu(int input_n, int input_c, int input_h, int input_w,
                 int pad_h, int pad_w,
                 int dilation_h, int dilation_w,
                 int group_count,
-                const void *x, void *y);
+                const Tin *x, Tin *y);
 #endif
 
 #endif

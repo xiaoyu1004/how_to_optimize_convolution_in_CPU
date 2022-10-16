@@ -7,13 +7,8 @@ __global__ void Conv2DNaiveKernel(int input_n, int input_c, int input_h, int inp
                                 int pad_h, int pad_w,
                                 int dilation_h, int dilation_w,
                                 int group_count,
-                                const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr)
+                                const Tin *x, const Tw *w, const Tacc *bias, Tout *y)
 {
-    const Tin *input_data = static_cast<const Tin *>(input_ptr);
-    const Tw *weight_data = static_cast<const Tw *>(weight_ptr);
-    const Tacc *bias_data = static_cast<const Tacc *>(bias);
-    Tout *output_data = static_cast<Tout *>(output_ptr);
-
     int khd = (kernel_h - 1) * dilation_h + 1;
     int kwd = (kernel_w - 1) * dilation_w + 1;
     int output_h = (input_h - khd + 2 * pad_h) / stride_h + 1;
@@ -48,19 +43,19 @@ __global__ void Conv2DNaiveKernel(int input_n, int input_c, int input_h, int inp
                                  ic * kernel_h * kernel_w + 
                                  kh * kernel_w + 
                                  kw;
-                result += input_data[input_idx] * weight_data[kernel_idx];
+                result += x[input_idx] * w[kernel_idx];
             }
         }
     }
-    if (bias_data)
+    if (bias)
     {
-        result += bias_data[oc];
+        result += bias[oc];
     }
     int output_idx = n * output_c * output_h * output_w + 
                      oc * output_h * output_w + 
                      oh * output_w + 
                      ow;
-    output_data[output_idx] = static_cast<Tout>(result);
+    y[output_idx] = static_cast<Tout>(result);
 }
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
@@ -70,7 +65,7 @@ void naive_conv_gpu(int input_n, int input_c, int input_h, int input_w,
                     int pad_h, int pad_w,
                     int dilation_h, int dilation_w,
                     int group_count,
-                    const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr)
+                    const Tin *x, const Tw *w, const Tacc *bias, Tout *y)
 {
     int khd = (kernel_h - 1) * dilation_h + 1;
     int kwd = (kernel_w - 1) * dilation_w + 1;
@@ -86,7 +81,7 @@ void naive_conv_gpu(int input_n, int input_c, int input_h, int input_w,
                                                                   pad_h, pad_w,
                                                                   dilation_h, dilation_w,
                                                                   group_count,
-                                                                  input_ptr, weight_ptr, bias, output_ptr);
+                                                                  x, w, bias, y);
 }
 
 template void naive_conv_gpu<float, float, float, float>(int input_n, int input_c, int input_h, int input_w,
@@ -95,4 +90,4 @@ template void naive_conv_gpu<float, float, float, float>(int input_n, int input_
                                                          int pad_h, int pad_w,
                                                          int dilation_h, int dilation_w,
                                                          int group_cnt,
-                                                         const void *input_ptr, const void *weight_ptr, const void *bias, void *output_ptr);
+                                                         const float *x, const float *w, const float *bias, float *y);

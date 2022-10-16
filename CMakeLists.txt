@@ -24,12 +24,14 @@ set(srcs src/Main.cpp
          src/im2col.cpp
          src/im2col_conv2d.cpp
          src/implicit_conv2d.cpp
-         src/naive_conv.cpp)
+         src/naive_conv.cpp
+         src/common.cpp)
 
 if(ENABLE_CUDA)
     list(APPEND srcs src/cuda/gemm.cu
-                     src/cuda/im2col_conv2d.cu
                      src/cuda/im2col.cu
+                     src/cuda/im2col_conv2d.cu
+                     src/cuda/implicit_conv2d.cu
                      src/cuda/naive_conv.cu)
 endif()
 add_executable(${PROJECT_NAME} ${srcs})

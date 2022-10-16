@@ -1,13 +1,8 @@
 #include "gemm.h"
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
-void gemm_cpu(int m, int n, int k, const void *a, const void *b, const void *bias, void *c)
+void gemm_cpu(int m, int n, int k, const Tw *a, const Tin *b, const Tacc *bias, Tout *c)
 {
-    const Tw *A = static_cast<const Tw *>(a);
-    const Tin *B = static_cast<const Tin *>(b);
-    const Tacc *Bias = static_cast<const Tacc *>(bias);
-    Tout *C = static_cast<Tout *>(c);
-
     int lda = k;
     int ldb = n;
     int ldc = n;
@@ -19,15 +14,15 @@ void gemm_cpu(int m, int n, int k, const void *a, const void *b, const void *bia
             Tacc acc = 0;
             for (int l = 0; l < k; ++l)
             {
-                acc += (A[i * k + l] * B[l * n + j]);
+                acc += (a[i * k + l] * b[l * n + j]);
             }
-            if (Bias)
+            if (bias)
             {
-                acc += Bias[i];
+                acc += bias[i];
             }
-            C[i * n + j] = acc;
+            c[i * n + j] = acc;
         }
     }
 }
 
-template void gemm_cpu<float, float, float, float>(int m, int n, int k, const void *a, const void *b, const void *bias, void *c);
+template void gemm_cpu<float, float, float, float>(int m, int n, int k, const float *a, const float *b, const float *bias, float *c);

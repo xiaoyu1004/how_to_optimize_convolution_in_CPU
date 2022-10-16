@@ -24,7 +24,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     for (int i = 0; i < input_size; ++i)
     {
         h_x[i] = static_cast<Tin>(dist(e));
-        // h_x[i] = static_cast<Tin>(i % 10);
+        // h_x[i] = static_cast<Tin>(1);
     }
 #ifdef ENABLE_CUDA
     Tin *d_x;
@@ -36,7 +36,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     for (int i = 0; i < weight_size; ++i)
     {
         h_w[i] = static_cast<Tw>(dist(e));
-        // h_w[i] = static_cast<Tw>(i % 10);
+        // h_w[i] = static_cast<Tw>(1);
     }
 #ifdef ENABLE_CUDA
     Tw *d_w;
@@ -48,7 +48,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     for (int i = 0; i < output_c; ++i)
     {
         h_bias[i] = static_cast<Tacc>(dist(e));
-        // h_bias[i] = static_cast<Tacc>(0);
+        // h_bias[i] = static_cast<Tacc>(1);
     }
 #ifdef ENABLE_CUDA
     Tacc *d_bias;
@@ -78,26 +78,24 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     // warm
     for (int i = 0; i < warm_cnt; ++i)
     {
-        Conv2dCPU<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
+        Conv2dCPU<Tin, Tw, Tacc, Tout>(algo, input_n, input_c, input_h, input_w,
                                        output_c, kernel_h, kernel_w,
                                        stride_h, stride_w,
                                        pad_h, pad_w,
                                        dilation_h, dilation_w,
                                        group_count,
-                                       algo,
                                        h_x, h_w, h_bias, h_ref_y);
     }
 
     for (int i = 0; i < loop_cnt; ++i)
     {
         t.start();
-        Conv2dCPU<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
+        Conv2dCPU<Tin, Tw, Tacc, Tout>(algo, input_n, input_c, input_h, input_w,
                                        output_c, kernel_h, kernel_w,
                                        stride_h, stride_w,
                                        pad_h, pad_w,
                                        dilation_h, dilation_w,
                                        group_count,
-                                       algo,
                                        h_x, h_w, h_bias, h_ref_y);
         t.stop();
         avg_t += t.get_elapsed_nano_seconds();
@@ -110,30 +108,40 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
               << "\tperformance_cpu: " << performance_cpu << std::endl;
 
 #ifdef ENABLE_CUDA
+    // workspace size
+    size_t workspace_size = get_convolution_workspace_size(algo, input_n, input_c, input_h, input_w,
+                                                           output_c, kernel_h, kernel_w,
+                                                           stride_h, stride_w,
+                                                           pad_h, pad_w,
+                                                           dilation_h, dilation_w,
+                                                           group_count);
+    Tin *workspace;
+    CUDA_CHECK(cudaMalloc(&workspace, workspace_size * sizeof(Tin)));
+
     avg_t = 0;
     // warm
     for (int i = 0; i < warm_cnt; ++i)
     {
-        Conv2dGPU<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
+        Conv2dGPU<Tin, Tw, Tacc, Tout>(algo, input_n, input_c, input_h, input_w,
                                        output_c, kernel_h, kernel_w,
                                        stride_h, stride_w,
                                        pad_h, pad_w,
                                        dilation_h, dilation_w,
                                        group_count,
-                                       algo,
+                                       workspace,
                                        d_x, d_w, d_bias, d_y);
     }
 
     for (int i = 0; i < loop_cnt; ++i)
     {
         t.start();
-        Conv2dGPU<Tin, Tw, Tacc, Tout>(input_n, input_c, input_h, input_w,
+        Conv2dGPU<Tin, Tw, Tacc, Tout>(algo, input_n, input_c, input_h, input_w,
                                        output_c, kernel_h, kernel_w,
                                        stride_h, stride_w,
                                        pad_h, pad_w,
                                        dilation_h, dilation_w,
                                        group_count,
-                                       algo,
+                                       workspace,
                                        d_x, d_w, d_bias, d_y);
         t.stop();
         avg_t += t.get_elapsed_nano_seconds();
@@ -183,33 +191,35 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     CUDNN_CHECK(cudnnGetConvolutionForwardAlgorithm_v7(handle, input_desc, filter_desc, conv_desc, output_desc, 1, 0, &cudnnAlgo));
 
     // 5.Applying for a Workspace
-    size_t workspace_size = 0;
-    CUDNN_CHECK(cudnnGetConvolutionForwardWorkspaceSize(handle, input_desc, filter_desc, conv_desc, output_desc, cudnnAlgo.algo, &workspace_size));
+    size_t dnn_workspace_size = 0;
+    CUDNN_CHECK(cudnnGetConvolutionForwardWorkspaceSize(handle, input_desc, filter_desc, conv_desc, output_desc, cudnnAlgo.algo, &dnn_workspace_size));
     void *d_workspace = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_workspace, workspace_size));
+    CUDA_CHECK(cudaMalloc(&d_workspace, dnn_workspace_size));
 
     // 6.Transfer the data that needs to be computed to the gpu
 
     // 7.Start convolution calculation
-#define CUDNN_CONV_FORWARD                                \
-    float alpha = 1.f;                                    \
-    float beta = 0.f;                                     \
-    CUDNN_CHECK(cudnnConvolutionForward(handle,           \
-                                        &alpha,           \
-                                        input_desc,       \
-                                        d_x,              \
-                                        filter_desc,      \
-                                        d_w,              \
-                                        conv_desc,        \
-                                        cudnnAlgo.algo,   \
-                                        d_workspace,      \
-                                        workspace_size,   \
-                                        &beta,            \
-                                        output_desc,      \
-                                        d_y));            \
-    CUDNN_CHECK(cudnnAddTensor(handle,                    \
-                               &alpha, bias_desc, d_bias, \
-                               &alpha, output_desc, d_y));
+#define CUDNN_CONV_FORWARD                                      \
+    {                                                           \
+        float alpha = 1.f;                                      \
+        float beta = 0.f;                                       \
+        CUDNN_CHECK(cudnnConvolutionForward(handle,             \
+                                            &alpha,             \
+                                            input_desc,         \
+                                            d_x,                \
+                                            filter_desc,        \
+                                            d_w,                \
+                                            conv_desc,          \
+                                            cudnnAlgo.algo,     \
+                                            d_workspace,        \
+                                            dnn_workspace_size, \
+                                            &beta,              \
+                                            output_desc,        \
+                                            d_y));              \
+        CUDNN_CHECK(cudnnAddTensor(handle,                      \
+                                   &alpha, bias_desc, d_bias,   \
+                                   &alpha, output_desc, d_y));  \
+    }
 
     avg_t = 0;
     // warm
@@ -296,6 +306,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
                       << "\tdiff1: " << diff1
                       << "\tdiff2 " << diff2 << std::endl;
             std::cout << "compare failed!" << std::endl;
+            std::terminate();
         }
     }
     std::cout << "compare pass!" << std::endl;
@@ -313,11 +324,13 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaFree(d_w));
     CUDA_CHECK(cudaFree(d_bias));
     CUDA_CHECK(cudaFree(d_y));
-#endif
+    CUDA_CHECK(cudaFree(workspace));
 
 #ifdef ENABLE_CUDNN
     delete[] h_dnn_y;
-#endif
+    CUDA_CHECK(cudaFree(d_workspace));
+#endif // ENABLE_CUDNN
+#endif // ENABLE_CUDA
 }
 
 int main()
@@ -325,14 +338,14 @@ int main()
     std::vector<std::vector<int>> test_cases = {
         // n c h w oc kh kw sh sw ph pw dh dw g
         // {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
-        // {1, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
+        // {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
         // {1, 2, 3, 3, 2, 2, 2, 1, 1, 0, 0, 1, 1, 1},
         // {1, 3, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
-        {1, 32, 320, 320, 64, 3, 3, 1, 1, 1, 1, 1, 1, 1}
+        {4, 32, 64, 64, 32, 3, 3, 1, 1, 1, 1, 1, 1, 1}
     };
-    std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_DIRECT /*, CONVOLUTION_FWD_ALGO_GEMM, CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM*/};
+    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_DIRECT, CONVOLUTION_FWD_ALGO_GEMM, /*CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM*/};
     // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_GEMM};
-    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
+    std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
 
     using Tin = float;
     using Tw = float;
