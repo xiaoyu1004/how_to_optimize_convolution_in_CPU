@@ -3,7 +3,7 @@
 #include "gemm.h"
 
 #include <cstring>
-#include <intrin.h>
+#include <x86intrin.h>
 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
 void im2col_conv2d_cpu(int input_n, int input_c, int input_h, int input_w,

@@ -14,7 +14,7 @@ __global__ void im2col_kernel(int num_threads,
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= num_threads) return;
 
-    int channels_col = input_c * kernel_h * kernel_w;
+    // int channels_col = input_c * kernel_h * kernel_w;
     int width_col = output_h * output_w;
     int c = tid / width_col;
     int oh = tid % width_col / output_w;

@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
-project(how_to_optimize_conv LANGUAGES CXX CUDA)
+project(how_to_optimize_conv LANGUAGES CXX)
+
+find_package(CUDA REQUIRED)
 set(CMAKE_CUDA_ARCHITECTURES 86)
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /NODEFAULTLIB:library")
 
@@ -34,6 +36,6 @@ if(ENABLE_CUDA)
                      src/cuda/implicit_conv2d.cu
                      src/cuda/naive_conv.cu)
 endif()
-add_executable(${PROJECT_NAME} ${srcs})
+cuda_add_executable(${PROJECT_NAME} ${srcs})
 target_include_directories(${PROJECT_NAME} PRIVATE src)
-target_link_libraries(${PROJECT_NAME} PRIVATE cudnn)
+# target_link_libraries(${PROJECT_NAME} PRIVATE cudnn)

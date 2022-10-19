@@ -337,11 +337,11 @@ int main()
 {
     std::vector<std::vector<int>> test_cases = {
         // n c h w oc kh kw sh sw ph pw dh dw g
-        // {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
+        {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
         // {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
         // {1, 2, 3, 3, 2, 2, 2, 1, 1, 0, 0, 1, 1, 1},
         // {1, 3, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
-        {4, 32, 64, 64, 32, 3, 3, 1, 1, 1, 1, 1, 1, 1}
+        // {4, 32, 64, 64, 32, 3, 3, 1, 1, 1, 1, 1, 1, 1}
     };
     // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_DIRECT, CONVOLUTION_FWD_ALGO_GEMM, /*CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM*/};
     // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_GEMM};

@@ -2,7 +2,7 @@
     "breadcrumbs.enabled": false,
     "editor.minimap.enabled": false,
     "files.autoSave": "afterDelay",
-    "editor.fontSize": 16,
+    "editor.fontSize": 15,
     "files.associations": {
         "random": "cpp",
         "format": "cpp",
@@ -70,8 +70,8 @@
         "xutility": "cpp"
     },
     "cmake.configureSettings": {
-        "ENABLE_LOG": "OFF",
+        "ENABLE_LOG": "ON",
         "ENABLE_CUDA": "ON",
-        "ENABLE_CUDNN": "ON"
+        "ENABLE_CUDNN": "OFF"
     }
 }
