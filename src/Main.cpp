@@ -310,6 +310,20 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
         }
     }
     std::cout << "compare pass!" << std::endl;
+#else
+for (int i = 0; i < output_size; ++i)
+    {
+        Tout diff1 = std::abs(h_y[i] - h_ref_y[i]);
+        if (diff1 > 1e-3f)
+        {
+            std::cout << "ERROR: h_y[" << i << "] = " << h_y[i]
+                      << " vs h_ref_y[" << i << "] = " << h_ref_y[i]
+                      << "\tdiff1: " << diff1 << std::endl;
+            std::cout << "compare failed!" << std::endl;
+            std::terminate();
+        }
+    }
+    std::cout << "compare pass!" << std::endl;
 #endif // ENABLE_CUDNN
 #endif // ENABLE_CUDA
 
@@ -337,15 +351,15 @@ int main()
 {
     std::vector<std::vector<int>> test_cases = {
         // n c h w oc kh kw sh sw ph pw dh dw g
-        {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
+        // {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
         // {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
         // {1, 2, 3, 3, 2, 2, 2, 1, 1, 0, 0, 1, 1, 1},
         // {1, 3, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
-        // {4, 32, 64, 64, 32, 3, 3, 1, 1, 1, 1, 1, 1, 1}
+        {4, 32, 64, 64, 64, 3, 3, 1, 1, 1, 1, 1, 1, 1}
     };
-    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_DIRECT, CONVOLUTION_FWD_ALGO_GEMM, /*CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM*/};
-    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_GEMM};
-    std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
+    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_DIRECT, CONVOLUTION_FWD_ALGO_GEMM, CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
+    std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_GEMM};
+    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
 
     using Tin = float;
     using Tw = float;

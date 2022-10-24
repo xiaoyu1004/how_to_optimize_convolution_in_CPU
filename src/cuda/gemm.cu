@@ -22,6 +22,9 @@ __global__ void gemm_gpu_kernel(int M, int N, int K, const Tw *a, const Tin *b, 
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
 void gemm_gpu(int M, int N, int K, const Tw *a, const Tin *b, const Tacc *bias, Tout *c)
 {
+    constexpr int BLOCK_SIZE_M = 32;
+    constexpr int BLOCK_SIZE_N = 32;
+    constexpr int BLOCK_SIZE_K = 8;
     dim3 dimBlock(16, 16);
     dim3 dimGrid((N + dimBlock.x - 1) / dimBlock.x, (M + dimBlock.y - 1) / dimBlock.y);
     gemm_gpu_kernel<Tin, Tw, Tacc, Tout><<<dimGrid, dimBlock>>>(M, N, K, a, b, bias, c);
