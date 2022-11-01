@@ -23,8 +23,8 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     Tin *h_x = new Tin[input_size];
     for (int i = 0; i < input_size; ++i)
     {
-        h_x[i] = static_cast<Tin>(dist(e));
-        // h_x[i] = static_cast<Tin>(1);
+        // h_x[i] = static_cast<Tin>(dist(e));
+        h_x[i] = static_cast<Tin>(1);
     }
 #ifdef ENABLE_CUDA
     Tin *d_x;
@@ -35,8 +35,8 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     Tw *h_w = new Tw[weight_size];
     for (int i = 0; i < weight_size; ++i)
     {
-        h_w[i] = static_cast<Tw>(dist(e));
-        // h_w[i] = static_cast<Tw>(1);
+        // h_w[i] = static_cast<Tw>(dist(e));
+        h_w[i] = static_cast<Tw>(1);
     }
 #ifdef ENABLE_CUDA
     Tw *d_w;
@@ -47,8 +47,8 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     Tacc *h_bias = new Tacc[output_c];
     for (int i = 0; i < output_c; ++i)
     {
-        h_bias[i] = static_cast<Tacc>(dist(e));
-        // h_bias[i] = static_cast<Tacc>(1);
+        // h_bias[i] = static_cast<Tacc>(dist(e));
+        h_bias[i] = static_cast<Tacc>(1);
     }
 #ifdef ENABLE_CUDA
     Tacc *d_bias;
@@ -75,6 +75,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     double avg_t = 0;
     std::uint64_t flops = (std::uint64_t)output_size * ((std::uint64_t)input_c * (std::uint64_t)kernel_h * (std::uint64_t)kernel_w * 2 - 1);
 
+#ifdef ENABLE_CPU
     // warm
     for (int i = 0; i < warm_cnt; ++i)
     {
@@ -106,6 +107,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
               << "\ttime(ns): " << avg_t << " ns"
               << "\tflops: " << flops
               << "\tperformance_cpu: " << performance_cpu << std::endl;
+#endif
 
 #ifdef ENABLE_CUDA
     // workspace size
@@ -245,6 +247,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
 #endif
 
 #ifdef ENABLE_LOG
+#ifdef ENABLE_CPU
     std::cout << "cpu:" << std::endl;
     for (int i = 0; i < output_h; ++i)
     {
@@ -258,6 +261,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
         }
         std::cout << std::endl;
     }
+#endif
 
 #ifdef ENABLE_CUDA
     std::cout << "gpu:" << std::endl;
@@ -293,7 +297,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
 #endif // ENABLE_LOG
 
 #ifdef ENABLE_CUDA
-#ifdef ENABLE_CUDNN
+#ifdef ENABLE_CPU
     for (int i = 0; i < output_size; ++i)
     {
         Tout diff1 = std::abs(h_y[i] - h_ref_y[i]);
@@ -313,11 +317,11 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
 #else
 for (int i = 0; i < output_size; ++i)
     {
-        Tout diff1 = std::abs(h_y[i] - h_ref_y[i]);
+        Tout diff1 = std::abs(h_y[i] - h_dnn_y[i]);
         if (diff1 > 1e-3f)
         {
             std::cout << "ERROR: h_y[" << i << "] = " << h_y[i]
-                      << " vs h_ref_y[" << i << "] = " << h_ref_y[i]
+                      << " vs h_dnn_y[" << i << "] = " << h_dnn_y[i]
                       << "\tdiff1: " << diff1 << std::endl;
             std::cout << "compare failed!" << std::endl;
             std::terminate();
@@ -358,8 +362,8 @@ int main()
         {4, 32, 64, 64, 64, 3, 3, 1, 1, 1, 1, 1, 1, 1}
     };
     // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_DIRECT, CONVOLUTION_FWD_ALGO_GEMM, CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
-    std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_GEMM};
-    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
+    // std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_GEMM};
+    std::vector<ConvolutionFwdAlgo_t> algos = {CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM};
 
     using Tin = float;
     using Tw = float;

@@ -4,9 +4,14 @@ project(how_to_optimize_conv LANGUAGES CXX CUDA)
 set(CMAKE_CUDA_ARCHITECTURES 86)
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /NODEFAULTLIB:library")
 
+option(ENABLE_CPU "enable cuda" ON)
 option(ENABLE_CUDA "enable cuda" ON)
 option(ENABLE_CUDNN "enable cuda" ON)
 option(ENABLE_LOG "enable cuda" ON)
+
+if(ENABLE_CPU)
+    add_definitions(-DENABLE_CPU)
+endif()
 
 if(ENABLE_CUDA)
     add_definitions(-DENABLE_CUDA)

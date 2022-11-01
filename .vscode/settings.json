@@ -71,6 +71,7 @@
     },
     "cmake.configureSettings": {
         "ENABLE_LOG": "OFF",
+        "ENABLE_CPU": "OFF",
         "ENABLE_CUDA": "ON",
         "ENABLE_CUDNN": "ON",
         "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc"
