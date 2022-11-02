@@ -23,8 +23,8 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     Tin *h_x = new Tin[input_size];
     for (int i = 0; i < input_size; ++i)
     {
-        // h_x[i] = static_cast<Tin>(dist(e));
-        h_x[i] = static_cast<Tin>(1);
+        h_x[i] = static_cast<Tin>(dist(e));
+        // h_x[i] = static_cast<Tin>(i);
     }
 #ifdef ENABLE_CUDA
     Tin *d_x;
@@ -35,8 +35,8 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     Tw *h_w = new Tw[weight_size];
     for (int i = 0; i < weight_size; ++i)
     {
-        // h_w[i] = static_cast<Tw>(dist(e));
-        h_w[i] = static_cast<Tw>(1);
+        h_w[i] = static_cast<Tw>(dist(e));
+        // h_w[i] = static_cast<Tw>(i);
     }
 #ifdef ENABLE_CUDA
     Tw *d_w;
@@ -47,8 +47,8 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     Tacc *h_bias = new Tacc[output_c];
     for (int i = 0; i < output_c; ++i)
     {
-        // h_bias[i] = static_cast<Tacc>(dist(e));
-        h_bias[i] = static_cast<Tacc>(1);
+        h_bias[i] = static_cast<Tacc>(dist(e));
+        // h_bias[i] = static_cast<Tacc>(0);
     }
 #ifdef ENABLE_CUDA
     Tacc *d_bias;
@@ -70,8 +70,8 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
 #endif
 
     timer t;
-    int warm_cnt = 5;
-    int loop_cnt = 20;
+    int warm_cnt = 0;
+    int loop_cnt = 1;
     double avg_t = 0;
     std::uint64_t flops = (std::uint64_t)output_size * ((std::uint64_t)input_c * (std::uint64_t)kernel_h * (std::uint64_t)kernel_w * 2 - 1);
 
@@ -318,7 +318,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
 for (int i = 0; i < output_size; ++i)
     {
         Tout diff1 = std::abs(h_y[i] - h_dnn_y[i]);
-        if (diff1 > 1e-3f)
+        if (diff1 > 1e-1f)
         {
             std::cout << "ERROR: h_y[" << i << "] = " << h_y[i]
                       << " vs h_dnn_y[" << i << "] = " << h_dnn_y[i]

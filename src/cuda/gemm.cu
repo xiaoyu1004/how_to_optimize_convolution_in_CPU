@@ -50,15 +50,13 @@ __global__ void gemm_gpu_kernel(int M, int N, int K, const Tw *A, const Tin *B, 
     }
 
     // store to c & bias
-    if (Bias)
+
+    if ((by * BLOCK_SIZE_M + ty) < M && (bx * BLOCK_SIZE_N + tx) < N)
     {
-        if ((by * BLOCK_SIZE_M + ty) < M && (bx * BLOCK_SIZE_N + tx) < N)
+        if (Bias)
         {
             Csub += Bias[g_idy];
         }
-    }
-    if ((by * BLOCK_SIZE_M + ty) < M && (bx * BLOCK_SIZE_N + tx) < N)
-    {
         C[g_idy * N + g_idx] = Csub;
     }
 }
