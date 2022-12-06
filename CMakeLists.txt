@@ -26,6 +26,8 @@ if(ENABLE_LOG)
     add_definitions(-DENABLE_LOG)
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+
 set(srcs src/Main.cpp
          src/gemm.cpp
          src/im2col.cpp
@@ -61,7 +63,7 @@ if (ENABLE_ILUVATAR)
     set(COMPILER_PATH ${ROOT_PATH}/bin CACHE PATH "compiler binary path")
     set(CMAKE_C_COMPILER ${COMPILER_PATH}/clang CACHE PATH "C compiler binary path")
     set(CMAKE_CXX_COMPILER ${COMPILER_PATH}/clang++ CACHE PATH "CXX compiler binary path")
-    set(CUDA_ARCH "ivcore10" CACHE STRING "CUDA architecture.")
+    set(CUDA_ARCH "ivcore11" CACHE STRING "CUDA architecture.")
 
     message(STATUS "ROOT_PATH: ${ROOT_PATH}")
     message(STATUS "CUDA_TOOLKIT_ROOT_DIR: ${CUDA_TOOLKIT_ROOT_DIR}")

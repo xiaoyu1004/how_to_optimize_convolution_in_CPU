@@ -96,14 +96,13 @@
         "__tuple": "cpp"
     },
     "cmake.configureSettings": {
-        "ENABLE_LOG": "ON",
+        "ENABLE_LOG": "OFF",
         "ENABLE_CPU": "ON",
         "ENABLE_CUDA": "ON",
         "ENABLE_CUDNN": "ON",
-        "CMAKE_CUDA_COMPILER": "/opt/sw_home/local/bin/clang++",
         "ENABLE_NVIDIA": "OFF",
         "ENABLE_ILUVATAR": "ON",
-        "SW_HOME": "ON"
+        "SW_HOME": "OFF"
         // cmake .. -DENABLE_LOG=ON -DENABLE_CPU=ON -DENABLE_CUDA=ON -DENABLE_CUDNN=ON -DENABLE_NVIDIA=OFF -DENABLE_ILUVATAR=ON -DSW_HOME=ON
     }
 }

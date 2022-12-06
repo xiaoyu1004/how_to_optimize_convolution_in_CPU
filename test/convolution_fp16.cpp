@@ -178,7 +178,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     for (int i = 0; i < output_size; ++i)
     {
         Tout diff1 = std::abs(h_ref_y[i] - h_y[i]);
-        if (diff1 > 1e-1f)
+        if (diff1 > 1.f)
         {
             std::cout << "ERROR: h_ref_y[" << i << "] = " << h_ref_y[i]
                       << " vs h_y[" << i << "] = " << h_y[i]
@@ -213,10 +213,12 @@ int main()
     std::vector<std::vector<int>> test_cases = {
         // n c h w oc kh kw sh sw ph pw dh dw g
         // {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
-        {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
+        // {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
         // {1, 2, 3, 3, 2, 2, 2, 1, 1, 0, 0, 1, 1, 1},
         // {1, 3, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
         // {4, 32, 64, 64, 64, 3, 3, 1, 1, 1, 1, 1, 1, 1}
+        {128, 32, 416, 672, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1}
+        // {128, 32, 64, 128, 128, 3, 3, 2, 2, 1, 1, 1, 1, 1}
     };
 
     using Tin = half;
