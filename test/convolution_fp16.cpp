@@ -1,5 +1,6 @@
 #include "common.h"
 #include "conv2d.hpp"
+#include "utils.h"
 
 #include <iostream>
 #include <vector>
@@ -71,15 +72,8 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaMemset(d_y, 0, output_size * sizeof(Tout)));
 #endif
 
-#ifdef ENABLE_CPU
-    Tacc *h_bias = nullptr;
-    Conv2dCPU<Tin, Tw, Tacc, Tout>(CONVOLUTION_FWD_ALGO_GEMM, input_n, input_c, input_h, input_w,
-                                   output_c, kernel_h, kernel_w,
-                                   stride_h, stride_w,
-                                   pad_h, pad_w,
-                                   dilation_h, dilation_w,
-                                   group_count,
-                                   h_x, h_w, h_bias, h_ref_y);
+#ifdef ENABLE_ILUVATAR
+    ReadDataFromFile(reinterpret_cast<char *>(h_ref_y), output_size * sizeof(Tout));
 #endif
 
 #ifdef ENABLE_CUDNN
@@ -135,10 +129,14 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
                                         output_desc,
                                         d_y));
     CUDA_CHECK(cudaMemcpy(h_y, d_y, output_size * sizeof(Tout), cudaMemcpyDeviceToHost));
+
+#ifdef ENABLE_NVIDIA
+    WriteDataToFile(reinterpret_cast<char *>(h_y), output_size * sizeof(Tout));
+#endif
 #endif
 
 #ifdef ENABLE_LOG
-#ifdef ENABLE_CPU
+#ifdef ENABLE_ILUVATAR
     std::cout << "cpu:" << std::endl;
     for (int i = 0; i < output_h; ++i)
     {
@@ -152,11 +150,10 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
         }
         std::cout << std::endl;
     }
-#endif
+
 
     std::cout << std::endl;
 
-#ifdef ENABLE_CUDNN
     std::cout << "gpu(cudnn):" << std::endl;
     for (int i = 0; i < output_h; ++i)
     {
@@ -170,11 +167,10 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
         }
         std::cout << std::endl;
     }
-#endif // ENABLE_CUDNN
+#endif // ENABLE_ILUVATAR
 #endif // ENABLE_LOG
 
-#ifdef ENABLE_CUDA
-#ifdef ENABLE_CPU
+#ifdef ENABLE_ILUVATAR
     for (int i = 0; i < output_size; ++i)
     {
         Tout diff1 = std::abs(h_ref_y[i] - h_y[i]);
@@ -188,12 +184,10 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
         }
     }
     std::cout << "compare pass!" << std::endl;
-#endif // ENABLE_CPU
-#endif // ENABLE_CUDA
+#endif // ENABLE_ILUVATAR
 
     delete[] h_x;
     delete[] h_w;
-    delete[] h_bias;
     delete[] h_ref_y;
 
 #ifdef ENABLE_CUDA

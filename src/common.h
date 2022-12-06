@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <chrono>
 #include <string>
+#include <iostream>
 
 #ifdef ENABLE_CUDA
 #define CUDA_CHECK(func)                                                                   \
