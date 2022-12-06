@@ -100,6 +100,8 @@
         "ENABLE_CPU": "ON",
         "ENABLE_CUDA": "ON",
         "ENABLE_CUDNN": "ON",
-        "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc"
+        // "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc"
+        "ENABLE_NVIDIA": "OFF",
+        "ENABLE_ILUVATAR": "ON"
     }
 }

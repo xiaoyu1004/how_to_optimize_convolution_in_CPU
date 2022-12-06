@@ -6,6 +6,15 @@ set(srcs ${PROJECT_SOURCE_DIR}/test/convolution_fp16.cpp
          ${PROJECT_SOURCE_DIR}/src/implicit_conv2d.cpp
          ${PROJECT_SOURCE_DIR}/src/naive_conv.cpp
          ${PROJECT_SOURCE_DIR}/src/common.cpp)
-add_executable(${MODULE_NAME} ${srcs})
-target_include_directories(${MODULE_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src /usr/local/cuda/include)
+
+if (ENABLE_NVIDIA)
+    add_executable(${MODULE_NAME} ${srcs})
+    target_include_directories(${MODULE_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src /usr/local/cuda/include)
+endif()
+
+if (ENABLE_ILUVATAR)
+    cuda_add_executable(${MODULE_NAME} ${srcs})
+    target_include_directories(${MODULE_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src /usr/local/corex/include)
+endif()
+
 target_link_libraries(${MODULE_NAME} cudnn cudart)
