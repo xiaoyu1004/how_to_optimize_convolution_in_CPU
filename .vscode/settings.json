@@ -100,8 +100,8 @@
         "ENABLE_CPU": "ON",
         "ENABLE_CUDA": "ON",
         "ENABLE_CUDNN": "ON",
-        "ENABLE_NVIDIA": "OFF",
-        "ENABLE_ILUVATAR": "ON",
+        "ENABLE_NVIDIA": "ON",
+        "ENABLE_ILUVATAR": "OFF",
         "SW_HOME": "OFF"
         // cmake .. -DENABLE_LOG=ON -DENABLE_CPU=ON -DENABLE_CUDA=ON -DENABLE_CUDNN=ON -DENABLE_NVIDIA=OFF -DENABLE_ILUVATAR=ON -DSW_HOME=ON
     }
