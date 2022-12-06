@@ -1,6 +1,8 @@
 #ifndef GEMM_H
 #define GEMM_H
 
+#include "common.h"
+
 template <typename Tin, typename Tw, typename Tacc, typename Tout>
 void gemm_cpu(int m, int n, int k, const Tw *a, const Tin *b, const Tacc *bias, Tout *c);
 

@@ -10,6 +10,8 @@
 #include <cudnn.h>
 #endif
 
+#include <cuda_fp16.h>
+
 #include <cstdint>
 #include <chrono>
 #include <string>

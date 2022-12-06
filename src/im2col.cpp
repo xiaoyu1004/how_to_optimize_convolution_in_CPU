@@ -28,7 +28,7 @@ void im2col_cpu(int input_n, int input_c, int input_h, int input_w,
             for (int ow = 0; ow < output_w; ++ow)
             {
                 int iw = ow * stride_w + kw - pad_w;
-                Tin val = 0;
+                Tin val = 0.f;
                 if (ih >= 0 && ih < input_h && iw >= 0 && iw < input_w)
                 {
                     int input_idx = ic * input_h * input_w + 
@@ -52,3 +52,11 @@ template void im2col_cpu<float>(int input_n, int input_c, int input_h, int input
                                 int dilation_h, int dilation_w,
                                 int group_count,
                                 const float *x, float *y);
+
+template void im2col_cpu<half>(int input_n, int input_c, int input_h, int input_w,
+                                int output_c, int kernel_h, int kernel_w,
+                                int stride_h, int stride_w,
+                                int pad_h, int pad_w,
+                                int dilation_h, int dilation_w,
+                                int group_count,
+                                const half *x, half *y);

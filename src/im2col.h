@@ -1,6 +1,8 @@
 #ifndef IM2COL_H
 #define IM2COL_H
 
+#include "common.h"
+
 template <typename Tin>
 void im2col_cpu(int input_n, int input_c, int input_h, int input_w,
                 int output_c, int kernel_h, int kernel_w,

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(how_to_optimize_conv LANGUAGES CXX CUDA)
 
-set(CMAKE_CUDA_ARCHITECTURES 86)
+set(CMAKE_CUDA_ARCHITECTURES 70)
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /NODEFAULTLIB:library")
 
 option(ENABLE_CPU "enable cuda" ON)
@@ -43,3 +43,5 @@ endif()
 add_executable(${PROJECT_NAME} ${srcs})
 target_include_directories(${PROJECT_NAME} PRIVATE src /usr/local/cuda/include)
 target_link_libraries(${PROJECT_NAME} cudnn)
+
+add_subdirectory(test)
