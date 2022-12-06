@@ -14,7 +14,7 @@ endif()
 
 if (ENABLE_ILUVATAR)
     cuda_add_executable(${MODULE_NAME} ${srcs})
-    target_include_directories(${MODULE_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src /usr/local/corex/include)
+    target_include_directories(${MODULE_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src ${CUDA_TOOLKIT_ROOT_DIR}/include)
 endif()
 
 target_link_libraries(${MODULE_NAME} cudnn cudart)
