@@ -15,8 +15,9 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
               int dilation_h, int dilation_w,
               int group_count)
 {
-    std::default_random_engine e(static_cast<unsigned>(time(NULL)));
-    std::normal_distribution<float> dist(-1.f, 1.f);
+    // std::default_random_engine e(static_cast<unsigned>(time(NULL)));
+    std::default_random_engine e(static_cast<unsigned>(1000));
+    std::normal_distribution<float> dist;
 
     int input_size = input_n * input_c * input_h * input_w;
     int weight_size = output_c * input_c * kernel_h * kernel_w;
