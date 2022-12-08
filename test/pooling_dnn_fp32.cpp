@@ -106,7 +106,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaEventSynchronize(stop));
     CUDA_CHECK(cudaEventElapsedTime(&avg_t, start, stop));
     avg_t /= loop_cnt;
-    std::cout << "device: GPU(CUDNN): " << avg_t << " ns" << std::endl;
+    std::cout << "device: GPU(CUDNN): " << avg_t << " ms" << std::endl;
 
     CUDA_CHECK(cudaMemcpy(h_y, d_y, output_size * sizeof(Tin), cudaMemcpyDeviceToHost));
 
