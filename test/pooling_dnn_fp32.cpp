@@ -147,12 +147,13 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
 int main()
 {
     std::vector<std::vector<int>> test_cases = {
-        // n c h w oc kh kw sh sw ph pw dh dw g
+        // n  c  h  w  kh  kw  sh  sw  ph  pw
         // {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
         // {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
-        // {4, 32, 64, 64, 64, 3, 3, 1, 1, 1, 1, 1, 1, 1},
+        {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
         // {128, 32, 416, 672, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1},
-        {128, 32, 320, 320, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1}};
+        // {128, 32, 320, 320, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1}
+        };
 
     using Tin = half;
     // using Tin = float;
@@ -160,10 +161,8 @@ int main()
     for (int i = 0; i < test_cases.size(); ++i)
     {
         TestConv<Tin>(test_cases[i][0], test_cases[i][1], test_cases[i][2], test_cases[i][3],
-                      test_cases[i][4], test_cases[i][5], test_cases[i][6],
-                      test_cases[i][7], test_cases[i][8],
-                      test_cases[i][9], test_cases[i][10],
-                      test_cases[i][11], test_cases[i][12],
-                      test_cases[i][13]);
+                     test_cases[i][4], test_cases[i][5],
+                      test_cases[i][6], test_cases[i][7],
+                      test_cases[i][8], test_cases[i][9]);
     }
 }
