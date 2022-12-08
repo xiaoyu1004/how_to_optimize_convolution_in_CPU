@@ -73,10 +73,41 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc));
     CUDNN_CHECK(cudnnSetTensor4dDescriptor(output_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, input_n, input_c, output_h, output_w));
 
+    timer t;
+    int warm_cnt = 3;
+    int loop_cnt = 10;
+    float avg_t = 0;
+
+    cudaEvent_t start, stop;
+    CUDA_CHECK(cudaEventCreate(&start));
+    CUDA_CHECK(cudaEventCreate(&stop));
+
     // 7.Start pooling calculation
-    float alpha = 1.f;
-    float beta = 0.f;
-    CUDNN_CHECK(cudnnPoolingForward(handle, pooling_desc, &alpha, input_desc, d_x, &beta, output_desc, d_y));
+#define CUDNN_POOLING_FWD                                                                                         \
+    {                                                                                                             \
+        float alpha = 1.f;                                                                                        \
+        float beta = 0.f;                                                                                         \
+        CUDNN_CHECK(cudnnPoolingForward(handle, pooling_desc, &alpha, input_desc, d_x, &beta, output_desc, d_y)); \
+    }
+
+    // warm
+    for (int i = 0; i < warm_cnt; ++i)
+    {
+        CUDNN_POOLING_FWD;
+    }
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    CUDA_CHECK(cudaEventRecord(start));
+    for (int i = 0; i < loop_cnt; ++i)
+    {
+        CUDNN_POOLING_FWD;
+    }
+    CUDA_CHECK(cudaEventRecord(stop));
+    CUDA_CHECK(cudaEventSynchronize(stop));
+    CUDA_CHECK(cudaEventElapsedTime(&avg_t, start, stop));
+    avg_t /= loop_cnt;
+    std::cout << "device: GPU(CUDNN): " << avg_t << " ns" << std::endl;
+
     CUDA_CHECK(cudaMemcpy(h_y, d_y, output_size * sizeof(Tin), cudaMemcpyDeviceToHost));
 
 #ifdef ENABLE_NVIDIA
@@ -153,7 +184,7 @@ int main()
         {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
         // {128, 32, 416, 672, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1},
         // {128, 32, 320, 320, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1}
-        };
+    };
 
     using Tin = half;
     // using Tin = float;
@@ -161,7 +192,7 @@ int main()
     for (int i = 0; i < test_cases.size(); ++i)
     {
         TestConv<Tin>(test_cases[i][0], test_cases[i][1], test_cases[i][2], test_cases[i][3],
-                     test_cases[i][4], test_cases[i][5],
+                      test_cases[i][4], test_cases[i][5],
                       test_cases[i][6], test_cases[i][7],
                       test_cases[i][8], test_cases[i][9]);
     }
