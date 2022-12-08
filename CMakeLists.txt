@@ -63,8 +63,8 @@ if (ENABLE_ILUVATAR)
     endif()
 
     set(COMPILER_PATH ${ROOT_PATH}/bin CACHE PATH "compiler binary path")
-    set(CMAKE_C_COMPILER ${COMPILER_PATH}/clang CACHE PATH "C compiler binary path")
-    set(CMAKE_CXX_COMPILER ${COMPILER_PATH}/clang++ CACHE PATH "CXX compiler binary path")
+    set(CMAKE_C_COMPILER ${COMPILER_PATH}/clang)
+    set(CMAKE_CXX_COMPILER ${COMPILER_PATH}/clang++)
     set(CUDA_ARCH "ivcore11" CACHE STRING "CUDA architecture.")
 
     message(STATUS "ROOT_PATH: ${ROOT_PATH}")
