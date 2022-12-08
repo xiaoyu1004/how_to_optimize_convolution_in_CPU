@@ -1,5 +1,5 @@
 set(TEST_CASE_1 convolution_fp16)
-set(srcs ${PROJECT_SOURCE_DIR}/test/convolution_fp16.cpp
+set(srcs ${PROJECT_SOURCE_DIR}/test/convolution_dnn_fp16.cpp
          ${PROJECT_SOURCE_DIR}/src/gemm.cpp
          ${PROJECT_SOURCE_DIR}/src/im2col.cpp
          ${PROJECT_SOURCE_DIR}/src/im2col_conv2d.cpp

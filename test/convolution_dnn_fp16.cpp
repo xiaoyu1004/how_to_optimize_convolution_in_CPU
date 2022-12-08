@@ -74,7 +74,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
 #endif
 
 #ifdef ENABLE_ILUVATAR
-    ReadDataFromFile(reinterpret_cast<char *>(h_ref_y), output_size * sizeof(Tout));
+    ReadDataFromFile("../../data/convolution_fp16.bin", reinterpret_cast<char *>(h_ref_y), output_size * sizeof(Tout));
 #endif
 
 #ifdef ENABLE_CUDNN
@@ -132,7 +132,7 @@ void TestConv(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaMemcpy(h_y, d_y, output_size * sizeof(Tout), cudaMemcpyDeviceToHost));
 
 #ifdef ENABLE_NVIDIA
-    WriteDataToFile(reinterpret_cast<char *>(h_y), output_size * sizeof(Tout));
+    WriteDataToFile("../../data/convolution_fp16.bin", reinterpret_cast<char *>(h_y), output_size * sizeof(Tout));
 #endif
 #endif
 

@@ -50,7 +50,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
 #endif
 
 #ifdef ENABLE_ILUVATAR
-    ReadDataFromFile(reinterpret_cast<char *>(h_ref_y), output_size * sizeof(Tin));
+    ReadDataFromFile("../../data/pooling_dnn_fp32.bin", reinterpret_cast<char *>(h_ref_y), output_size * sizeof(Tin));
 #endif
 
 #ifdef ENABLE_CUDNN
@@ -111,7 +111,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaMemcpy(h_y, d_y, output_size * sizeof(Tin), cudaMemcpyDeviceToHost));
 
 #ifdef ENABLE_NVIDIA
-    WriteDataToFile(reinterpret_cast<char *>(h_y), output_size * sizeof(Tin));
+    WriteDataToFile("../../data/pooling_dnn_fp32.bin", reinterpret_cast<char *>(h_y), output_size * sizeof(Tin));
 #endif
 #endif
 
@@ -191,9 +191,9 @@ int main()
 
     for (int i = 0; i < test_cases.size(); ++i)
     {
-        TestConv<Tin>(test_cases[i][0], test_cases[i][1], test_cases[i][2], test_cases[i][3],
-                      test_cases[i][4], test_cases[i][5],
-                      test_cases[i][6], test_cases[i][7],
-                      test_cases[i][8], test_cases[i][9]);
+        TestPooling<Tin>(test_cases[i][0], test_cases[i][1], test_cases[i][2], test_cases[i][3],
+                         test_cases[i][4], test_cases[i][5],
+                         test_cases[i][6], test_cases[i][7],
+                         test_cases[i][8], test_cases[i][9]);
     }
 }
