@@ -1,4 +1,5 @@
 #include "common.h"
+#include "utils.h"
 
 #include <iostream>
 #include <vector>
@@ -70,8 +71,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     {
         if (std::is_same<Tin, half>::value)
         {
-            float tmp = dist(e);
-            h_x[i] = __float2half(tmp);
+            h_x[i] = __float2half(dist(e));
         }
         else
         {
@@ -108,41 +108,28 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaEventCreate(&start));
     CUDA_CHECK(cudaEventCreate(&stop));
 
+    float alpha = 1.f;
+    float beta = 0.f;
+    const int num_blocks = input_n * input_c * output_h;
+    constexpr int CUDA_NUM_THREADS = 128;
+
     // 7.Start pooling calculation
-#define CUDNN_POOLING_FWD                        \
-    {                                            \
-        float alpha = 1.f;                       \
-        float beta = 0.f;                        \
-        const int num_blocks = N * C * output_h; \
-        constexpr int CUDA_NUM_THREADS = 128;    \
-        AveragePool2DForwardNCHWCUDAKernel<Tin>  \
-            <<<num_blocks, CUDA_NUM_THREADS>>>(  \
-                input_h,                         \
-                input_w,                         \
-                output_h,                        \
-                output_w,                        \
-                kernel_h,                        \
-                kernel_w,                        \
-                stride_h,                        \
-                stride_w,                        \
-                pad_h,                           \
-                pad_w,                           \
-                true,                            \
-                d_x,                             \
-                d_y);                            \
+#define CUDA_POOLING_FWD                                                                                                                                                                       \
+    {                                                                                                                                                                                          \
+        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y); \
     }
 
     // warm
     for (int i = 0; i < warm_cnt; ++i)
     {
-        CUDNN_POOLING_FWD;
+        CUDA_POOLING_FWD;
     }
     CUDA_CHECK(cudaDeviceSynchronize());
 
     CUDA_CHECK(cudaEventRecord(start));
     for (int i = 0; i < loop_cnt; ++i)
     {
-        CUDNN_POOLING_FWD;
+        CUDA_POOLING_FWD;
     }
     CUDA_CHECK(cudaEventRecord(stop));
     CUDA_CHECK(cudaEventSynchronize(stop));
@@ -228,7 +215,7 @@ int main()
 
         // {128, 32, 416, 672, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1},
         // {32, 64, 320, 320, 3, 3, 1, 1, 1, 1}
-        };
+    };
 
     // using Tin = half;
     using Tin = float;

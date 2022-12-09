@@ -1,10 +1,10 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#ifdef ENABLE_CUDA
+// #ifdef ENABLE_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
-#endif
+// #endif
 
 #ifdef ENABLE_CUDNN
 #include <cudnn.h>

@@ -44,7 +44,7 @@ target_link_libraries(${TEST_CASE_2} cudnn cudart)
 ################################################################################
 
 set(TEST_CASE_3 pooling_kernel_fp32)
-set(srcs ${PROJECT_SOURCE_DIR}/test/pooling_kernel_fp32.cpp
+set(srcs ${PROJECT_SOURCE_DIR}/test/pooling_kernel_fp32.cu
          ${PROJECT_SOURCE_DIR}/src/common.cpp
          ${PROJECT_SOURCE_DIR}/tools/utils.cpp)
 
