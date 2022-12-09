@@ -22,37 +22,39 @@ __global__ void AveragePool2DForwardNCHWCUDAKernel(
     const T *X,
     T *Y)
 {
-    const int X_HxW = X_H * X_W;
-    const int Y_HxW = Y_H * Y_W;
-    const int nc = blockIdx.x / Y_H;
-    const int yh = blockIdx.x % Y_H;
-    const T *X_ptr = X + nc * X_HxW;
-    T *Y_ptr = Y + nc * Y_HxW;
-    const int xh = yh * stride_h - pad_t;
-    const int t = max(xh, 0);
-    const int b = min(xh + kernel_h, X_H);
-    for (int yw = threadIdx.x; yw < Y_W; yw += blockDim.x)
-    {
-        const int xw = yw * stride_w - pad_l;
-        const int l = max(xw, 0);
-        const int r = min(xw + kernel_w, X_W);
-        const T scale = T(1) /
-                        static_cast<T>(count_include_pad ? kernel_h * kernel_w
-                                                         : (b - t) * (r - l));
-        T sum = 0;
-        for (int i = t; i < b; ++i)
-        {
-            for (int j = l; j < r; ++j)
-            {
-#if __CUDA_ARCH__ >= 350
-                sum += __ldg(X_ptr + i * X_W + j);
-#else
-                sum += X_ptr[i * X_W + j];
-#endif
-            }
-        }
-        Y_ptr[yh * Y_W + yw] = sum * scale;
-    }
+    printf("val: %f\n", X[0]);
+    
+//     const int X_HxW = X_H * X_W;
+//     const int Y_HxW = Y_H * Y_W;
+//     const int nc = blockIdx.x / Y_H;
+//     const int yh = blockIdx.x % Y_H;
+//     const T *X_ptr = X + nc * X_HxW;
+//     T *Y_ptr = Y + nc * Y_HxW;
+//     const int xh = yh * stride_h - pad_t;
+//     const int t = max(xh, 0);
+//     const int b = min(xh + kernel_h, X_H);
+//     for (int yw = threadIdx.x; yw < Y_W; yw += blockDim.x)
+//     {
+//         const int xw = yw * stride_w - pad_l;
+//         const int l = max(xw, 0);
+//         const int r = min(xw + kernel_w, X_W);
+//         const T scale = T(1) /
+//                         static_cast<T>(count_include_pad ? kernel_h * kernel_w
+//                                                          : (b - t) * (r - l));
+//         T sum = 0;
+//         for (int i = t; i < b; ++i)
+//         {
+//             for (int j = l; j < r; ++j)
+//             {
+// // #if __CUDA_ARCH__ >= 350
+// //                 sum += __ldg(X_ptr + i * X_W + j);
+// // #else
+//                 sum += X_ptr[i * X_W + j];
+// // #endif
+//             }
+//         }
+//         Y_ptr[yh * Y_W + yw] = sum * scale;
+//     }
 }
 
 template <typename Tin>
@@ -114,22 +116,24 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     constexpr int CUDA_NUM_THREADS = 128;
 
     // 7.Start pooling calculation
-#define CUDA_POOLING_FWD                                                                                                                                                                       \
-    {                                                                                                                                                                                          \
-        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y); \
-    }
+// #define CUDA_POOLING_FWD                                                                                                                                                                       \
+//     {                                                                                                                                                                                          \
+//         AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y); \
+//     }
 
     // warm
     for (int i = 0; i < warm_cnt; ++i)
     {
-        CUDA_POOLING_FWD;
+        // CUDA_POOLING_FWD;
+        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y);
     }
     CUDA_CHECK(cudaDeviceSynchronize());
 
     CUDA_CHECK(cudaEventRecord(start));
     for (int i = 0; i < loop_cnt; ++i)
     {
-        CUDA_POOLING_FWD;
+        // CUDA_POOLING_FWD;
+        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y);
     }
     CUDA_CHECK(cudaEventRecord(stop));
     CUDA_CHECK(cudaEventSynchronize(stop));
