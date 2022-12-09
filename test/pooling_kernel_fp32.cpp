@@ -1,10 +1,58 @@
 #include "common.h"
-#include "utils.h"
 
 #include <iostream>
 #include <vector>
 #include <random>
 #include <ctime>
+
+template <typename T>
+__global__ void AveragePool2DForwardNCHWCUDAKernel(
+    const int X_H,
+    const int X_W,
+    const int Y_H,
+    const int Y_W,
+    const int kernel_h,
+    const int kernel_w,
+    const int stride_h,
+    const int stride_w,
+    const int pad_t,
+    const int pad_l,
+    const bool count_include_pad,
+    const T *X,
+    T *Y)
+{
+    const int X_HxW = X_H * X_W;
+    const int Y_HxW = Y_H * Y_W;
+    const int nc = blockIdx.x / Y_H;
+    const int yh = blockIdx.x % Y_H;
+    const T *X_ptr = X + nc * X_HxW;
+    T *Y_ptr = Y + nc * Y_HxW;
+    const int xh = yh * stride_h - pad_t;
+    const int t = max(xh, 0);
+    const int b = min(xh + kernel_h, X_H);
+    for (int yw = threadIdx.x; yw < Y_W; yw += blockDim.x)
+    {
+        const int xw = yw * stride_w - pad_l;
+        const int l = max(xw, 0);
+        const int r = min(xw + kernel_w, X_W);
+        const T scale = T(1) /
+                        static_cast<T>(count_include_pad ? kernel_h * kernel_w
+                                                         : (b - t) * (r - l));
+        T sum = 0;
+        for (int i = t; i < b; ++i)
+        {
+            for (int j = l; j < r; ++j)
+            {
+#if __CUDA_ARCH__ >= 350
+                sum += __ldg(X_ptr + i * X_W + j);
+#else
+                sum += X_ptr[i * X_W + j];
+#endif
+            }
+        }
+        Y_ptr[yh * Y_W + yw] = sum * scale;
+    }
+}
 
 template <typename Tin>
 void TestPooling(int input_n, int input_c, int input_h, int input_w,
@@ -31,47 +79,25 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
         }
         // h_x[i] = static_cast<Tin>(i);
     }
-#ifdef ENABLE_CUDA
+
     Tin *d_x;
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_x), input_size * sizeof(Tin)));
     CUDA_CHECK(cudaMemcpy(d_x, h_x, input_size * sizeof(Tin), cudaMemcpyHostToDevice));
-#endif
 
     int output_h = (input_h - kernel_h + 2 * pad_h) / stride_h + 1;
     int output_w = (input_w - kernel_w + 2 * pad_w) / stride_w + 1;
 
     int output_size = input_n * input_c * output_h * output_w;
     Tin *h_ref_y = new Tin[output_size]{};
-#ifdef ENABLE_CUDA
+
     Tin *h_y = new Tin[output_size];
     Tin *d_y;
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_y), output_size * sizeof(Tin)));
     CUDA_CHECK(cudaMemset(d_y, 0, output_size * sizeof(Tin)));
-#endif
 
 #ifdef ENABLE_ILUVATAR
     ReadDataFromFile("../../data/pooling_dnn_fp32.bin", reinterpret_cast<char *>(h_ref_y), output_size * sizeof(Tin));
 #endif
-
-#ifdef ENABLE_CUDNN
-    // 1.init cudnn handle
-    cudnnHandle_t handle;
-    CUDNN_CHECK(cudnnCreate(&handle));
-
-    // 2.tensor descriptor
-    cudnnTensorDescriptor_t input_desc;
-    CUDNN_CHECK(cudnnCreateTensorDescriptor(&input_desc));
-    CUDNN_CHECK(cudnnSetTensor4dDescriptor(input_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, input_n, input_c, input_h, input_w));
-
-    // 3.Describes operations and sets related parameters
-    cudnnPoolingMode_t mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-    cudnnPoolingDescriptor_t pooling_desc;
-    CUDNN_CHECK(cudnnCreatePoolingDescriptor(&pooling_desc));
-    CUDNN_CHECK(cudnnSetPooling2dDescriptor(pooling_desc, mode, CUDNN_NOT_PROPAGATE_NAN, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w));
-
-    cudnnTensorDescriptor_t output_desc;
-    CUDNN_CHECK(cudnnCreateTensorDescriptor(&output_desc));
-    CUDNN_CHECK(cudnnSetTensor4dDescriptor(output_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, input_n, input_c, output_h, output_w));
 
     timer t;
     int warm_cnt = 3;
@@ -83,11 +109,27 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaEventCreate(&stop));
 
     // 7.Start pooling calculation
-#define CUDNN_POOLING_FWD                                                                                         \
-    {                                                                                                             \
-        float alpha = 1.f;                                                                                        \
-        float beta = 0.f;                                                                                         \
-        CUDNN_CHECK(cudnnPoolingForward(handle, pooling_desc, &alpha, input_desc, d_x, &beta, output_desc, d_y)); \
+#define CUDNN_POOLING_FWD                        \
+    {                                            \
+        float alpha = 1.f;                       \
+        float beta = 0.f;                        \
+        const int num_blocks = N * C * output_h; \
+        constexpr int CUDA_NUM_THREADS = 128;    \
+        AveragePool2DForwardNCHWCUDAKernel<Tin>  \
+            <<<num_blocks, CUDA_NUM_THREADS>>>(  \
+                input_h,                         \
+                input_w,                         \
+                output_h,                        \
+                output_w,                        \
+                kernel_h,                        \
+                kernel_w,                        \
+                stride_h,                        \
+                stride_w,                        \
+                pad_h,                           \
+                pad_w,                           \
+                true,                            \
+                d_x,                             \
+                d_y);                            \
     }
 
     // warm
@@ -106,13 +148,12 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaEventSynchronize(stop));
     CUDA_CHECK(cudaEventElapsedTime(&avg_t, start, stop));
     avg_t /= loop_cnt;
-    std::cout << "device: GPU(CUDNN): " << avg_t << " ms" << std::endl;
+    std::cout << "device: GPU: " << avg_t << " ms" << std::endl;
 
     CUDA_CHECK(cudaMemcpy(h_y, d_y, output_size * sizeof(Tin), cudaMemcpyDeviceToHost));
 
 #ifdef ENABLE_NVIDIA
     WriteDataToFile("../../data/pooling_dnn_fp32.bin", reinterpret_cast<char *>(h_y), output_size * sizeof(Tin));
-#endif
 #endif
 
 #ifdef ENABLE_LOG
@@ -181,13 +222,13 @@ int main()
         // n  c  h  w  kh  kw  sh  sw  ph  pw
         // {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
         // {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
-        // {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
+        {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
 
         // {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
 
         // {128, 32, 416, 672, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1},
-        {32, 64, 320, 320, 3, 3, 1, 1, 1, 1}
-    };
+        // {32, 64, 320, 320, 3, 3, 1, 1, 1, 1}
+        };
 
     // using Tin = half;
     using Tin = float;

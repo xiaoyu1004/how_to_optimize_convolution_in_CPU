@@ -40,3 +40,23 @@ endif()
 
 target_include_directories(${TEST_CASE_2} PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tools)
 target_link_libraries(${TEST_CASE_2} cudnn cudart)
+
+################################################################################
+
+set(TEST_CASE_3 pooling_kernel_fp32)
+set(srcs ${PROJECT_SOURCE_DIR}/test/pooling_kernel_fp32.cpp
+         ${PROJECT_SOURCE_DIR}/src/common.cpp
+         ${PROJECT_SOURCE_DIR}/tools/utils.cpp)
+
+if (ENABLE_NVIDIA)
+    add_executable(${TEST_CASE_3} ${srcs})
+    target_include_directories(${TEST_CASE_3} PRIVATE /usr/local/cuda/include)
+endif()
+
+if (ENABLE_ILUVATAR)
+    cuda_add_executable(${TEST_CASE_3} ${srcs})
+    target_include_directories(${TEST_CASE_3} PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include)
+endif()
+
+target_include_directories(${TEST_CASE_3} PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tools)
+target_link_libraries(${TEST_CASE_3} cudnn cudart)
