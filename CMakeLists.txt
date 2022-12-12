@@ -26,7 +26,7 @@ if(ENABLE_LOG)
     add_definitions(-DENABLE_LOG)
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 set(srcs src/Main.cpp
          src/gemm.cpp

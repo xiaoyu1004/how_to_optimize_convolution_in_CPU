@@ -6,6 +6,59 @@
 #include <random>
 #include <ctime>
 
+#define ENABLE_COMPARE 1
+
+typedef unsigned v4u32 __attribute__((ext_vector_type(4)));
+
+template <typename value_t>
+__host__ __device__ value_t clz(value_t x)
+{
+    for (int i = 31; i >= 0; --i)
+    {
+        if ((1 << i) & x)
+            return 31 - i;
+    }
+    return 32;
+}
+
+__host__ __device__ inline int find_log2(int x)
+{
+    int a = 31 - clz(x);
+    a += (x & (x - 1)) != 0; // Round up, add 1 if not a power of 2.
+    return a;
+}
+
+/**
+ * Find divisor, using find_log2
+ */
+__host__ __device__ inline void find_divisor(int &mul, int &shr, int denom)
+{
+    if (denom == 1)
+    {
+        mul = 0;
+        shr = 0;
+    }
+    else
+    {
+        int p = 31 + find_log2(denom);
+        int m = ((1ull << p) + denom - 1) / denom;
+
+        mul = m;
+        shr = p - 32;
+    }
+}
+
+/**
+ * Find quotient and remainder using device-side intrinsics
+ */
+__device__ inline void fast_divmod(int &quo, int &rem, int src, int div,
+                                   unsigned int mul, unsigned int shr)
+{
+    quo = __umulhi(src, mul) >> shr;
+    quo = (div == 1) ? src : quo;
+    rem = src - (quo * div);
+}
+
 template <typename T>
 __global__ void AveragePool2DForwardNCHWCUDAKernel(
     const int X_H,
@@ -19,42 +72,54 @@ __global__ void AveragePool2DForwardNCHWCUDAKernel(
     const int pad_t,
     const int pad_l,
     const bool count_include_pad,
+    int mul,
+    int shr,
     const T *X,
     T *Y)
 {
-    printf("val: %f\n", X[0]);
-    
-//     const int X_HxW = X_H * X_W;
-//     const int Y_HxW = Y_H * Y_W;
-//     const int nc = blockIdx.x / Y_H;
-//     const int yh = blockIdx.x % Y_H;
-//     const T *X_ptr = X + nc * X_HxW;
-//     T *Y_ptr = Y + nc * Y_HxW;
-//     const int xh = yh * stride_h - pad_t;
-//     const int t = max(xh, 0);
-//     const int b = min(xh + kernel_h, X_H);
-//     for (int yw = threadIdx.x; yw < Y_W; yw += blockDim.x)
-//     {
-//         const int xw = yw * stride_w - pad_l;
-//         const int l = max(xw, 0);
-//         const int r = min(xw + kernel_w, X_W);
-//         const T scale = T(1) /
-//                         static_cast<T>(count_include_pad ? kernel_h * kernel_w
-//                                                          : (b - t) * (r - l));
-//         T sum = 0;
-//         for (int i = t; i < b; ++i)
-//         {
-//             for (int j = l; j < r; ++j)
-//             {
-// // #if __CUDA_ARCH__ >= 350
-// //                 sum += __ldg(X_ptr + i * X_W + j);
-// // #else
-//                 sum += X_ptr[i * X_W + j];
-// // #endif
-//             }
-//         }
-//         Y_ptr[yh * Y_W + yw] = sum * scale;
-//     }
+    // v4u32 XBase;
+    // XBase.x = (unsigned)(unsigned long long)X;
+    // XBase.y = (unsigned)((unsigned long long)X >> 32);
+    // XBase.zw = -1u;
+
+    // v4u32 YBase;
+    // YBase.x = (unsigned)(unsigned long long)Y;
+    // YBase.y = (unsigned)((unsigned long long)Y >> 32);
+    // YBase.zw = -1u;
+
+    const int X_HxW = X_H * X_W;
+    const int Y_HxW = Y_H * Y_W;
+
+    // const int nc = blockIdx.x / Y_H;
+    // const int yh = blockIdx.x % Y_H;
+
+    int nc, yh;
+    fast_divmod(nc, yh, blockIdx.x, Y_H, mul, shr);
+
+    const T *X_ptr = X + nc * X_HxW;
+    T *Y_ptr = Y + nc * Y_HxW;
+    const int xh = yh * stride_h - pad_t;
+    const int t = max(xh, 0);
+    const int b = min(xh + kernel_h, X_H);
+    for (int yw = threadIdx.x; yw < Y_W; yw += blockDim.x)
+    {
+        const int xw = yw * stride_w - pad_l;
+        const int l = max(xw, 0);
+        const int r = min(xw + kernel_w, X_W);
+        const T scale = T(1) / static_cast<T>(count_include_pad ? kernel_h * kernel_w : (b - t) * (r - l));
+        T sum = 0;
+        for (int i = t; i < b; ++i)
+        {
+            for (int j = l; j < r; ++j)
+            {
+                sum += X_ptr[i * X_W + j];
+                // sum += __ivcorex_ml_mem_load_f32(XBase, nc * X_HxW * 4, (i * X_W + j) * 4, 0);
+            }
+        }
+        Y_ptr[yh * Y_W + yw] = sum * scale;
+        // T val = sum * scale;
+        // __ivcorex_ml_mem_store_f32(val, YBase, nc * Y_HxW * 4, (yh * Y_W + yw) * 4, 0);
+    }
 }
 
 template <typename Tin>
@@ -97,8 +162,10 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_y), output_size * sizeof(Tin)));
     CUDA_CHECK(cudaMemset(d_y, 0, output_size * sizeof(Tin)));
 
+#if ENABLE_COMPARE
 #ifdef ENABLE_ILUVATAR
     ReadDataFromFile("../../data/pooling_dnn_fp32.bin", reinterpret_cast<char *>(h_ref_y), output_size * sizeof(Tin));
+#endif
 #endif
 
     timer t;
@@ -115,8 +182,11 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     const int num_blocks = input_n * input_c * output_h;
     constexpr int CUDA_NUM_THREADS = 128;
 
+    int mul, shr;
+    find_divisor(mul, shr, output_h);
+
     // 7.Start pooling calculation
-// #define CUDA_POOLING_FWD                                                                                                                                                                       \
+    // #define CUDA_POOLING_FWD                                                                                                                                                                       \
 //     {                                                                                                                                                                                          \
 //         AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y); \
 //     }
@@ -125,7 +195,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     for (int i = 0; i < warm_cnt; ++i)
     {
         // CUDA_POOLING_FWD;
-        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y);
+        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, mul, shr, d_x, d_y);
     }
     CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -133,13 +203,23 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     for (int i = 0; i < loop_cnt; ++i)
     {
         // CUDA_POOLING_FWD;
-        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y);
+        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, mul, shr, d_x, d_y);
     }
     CUDA_CHECK(cudaEventRecord(stop));
     CUDA_CHECK(cudaEventSynchronize(stop));
     CUDA_CHECK(cudaEventElapsedTime(&avg_t, start, stop));
-    avg_t /= loop_cnt;
-    std::cout << "device: GPU: " << avg_t << " ms" << std::endl;
+    avg_t /= loop_cnt; // std::cout << "input_n\tinput_c\tinput_h\tinput_w\tkernel_h\tkernel_w\tstride_h\tstride_w\tpad_h\tpad_w" << std::endl;
+    std::cout << input_n << "\t"
+              << input_c << "\t"
+              << input_h << "\t"
+              << kernel_h << "\t"
+              << kernel_w << "\t"
+              << stride_h << "\t"
+              << stride_w << "\t"
+              << pad_h << "\t"
+              << pad_w << "\t"
+              << avg_t
+              << " ms" << std::endl;
 
     CUDA_CHECK(cudaMemcpy(h_y, d_y, output_size * sizeof(Tin), cudaMemcpyDeviceToHost));
 
@@ -181,6 +261,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
 #endif // ENABLE_ILUVATAR
 #endif // ENABLE_LOG
 
+#if ENABLE_COMPARE
 #ifdef ENABLE_ILUVATAR
     for (int i = 0; i < output_size; ++i)
     {
@@ -196,6 +277,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     }
     std::cout << "compare pass!" << std::endl;
 #endif // ENABLE_ILUVATAR
+#endif // ENABLE_COMPARE
 
     delete[] h_x;
     delete[] h_ref_y;
@@ -209,16 +291,27 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
 
 int main()
 {
+    std::cout << "input_n\tinput_c\tinput_h\tinput_w\tkernel_h\tkernel_w\tstride_h\tstride_w\tpad_h\tpad_w" << std::endl;
     std::vector<std::vector<int>> test_cases = {
         // n  c  h  w  kh  kw  sh  sw  ph  pw
-        // {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
-        // {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
-        {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
 
-        // {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
+        // {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
 
-        // {128, 32, 416, 672, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1},
+        {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
+
         // {32, 64, 320, 320, 3, 3, 1, 1, 1, 1}
+
+        // {32, 64, 320, 320, 3, 3, 1, 1, 1, 1},
+        // {32, 16, 320, 320, 3, 3, 1, 1, 1, 1},
+        // {32, 64, 128, 128, 3, 3, 1, 1, 1, 1},
+        // {16, 64, 256, 256, 3, 3, 1, 1, 1, 1},
+        // {64, 64, 64, 64, 3, 3, 1, 1, 1, 1},
+
+        // {32, 64, 320, 320, 6, 6, 1, 1, 1, 1},
+        // {32, 16, 320, 320, 6, 6, 1, 1, 1, 1},
+        // {32, 64, 128, 128, 6, 6, 1, 1, 1, 1},
+        // {16, 64, 256, 256, 6, 6, 1, 1, 1, 1},
+        // {64, 64, 64, 64, 6, 6, 1, 1, 1, 1},
     };
 
     // using Tin = half;

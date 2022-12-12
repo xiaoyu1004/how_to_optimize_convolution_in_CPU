@@ -6,6 +6,8 @@
 #include <random>
 #include <ctime>
 
+#define ENABLE_COMPARE 1
+
 template <typename Tin>
 void TestPooling(int input_n, int input_c, int input_h, int input_w,
                  int kernel_h, int kernel_w,
@@ -49,8 +51,10 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaMemset(d_y, 0, output_size * sizeof(Tin)));
 #endif
 
+#if ENABLE_COMPARE
 #ifdef ENABLE_ILUVATAR
     ReadDataFromFile("../../data/pooling_dnn_fp32.bin", reinterpret_cast<char *>(h_ref_y), output_size * sizeof(Tin));
+#endif
 #endif
 
 #ifdef ENABLE_CUDNN
@@ -64,7 +68,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDNN_CHECK(cudnnSetTensor4dDescriptor(input_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, input_n, input_c, input_h, input_w));
 
     // 3.Describes operations and sets related parameters
-    cudnnPoolingMode_t mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    cudnnPoolingMode_t mode = CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
     cudnnPoolingDescriptor_t pooling_desc;
     CUDNN_CHECK(cudnnCreatePoolingDescriptor(&pooling_desc));
     CUDNN_CHECK(cudnnSetPooling2dDescriptor(pooling_desc, mode, CUDNN_NOT_PROPAGATE_NAN, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w));
@@ -106,7 +110,18 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     CUDA_CHECK(cudaEventSynchronize(stop));
     CUDA_CHECK(cudaEventElapsedTime(&avg_t, start, stop));
     avg_t /= loop_cnt;
-    std::cout << "device: GPU(CUDNN): " << avg_t << " ms" << std::endl;
+    // std::cout << "device: GPU(CUDNN): " << avg_t << " ms" << std::endl;
+    std::cout << input_n << "\t"
+              << input_c << "\t"
+              << input_h << "\t"
+              << kernel_h << "\t"
+              << kernel_w << "\t"
+              << stride_h << "\t"
+              << stride_w << "\t"
+              << pad_h << "\t"
+              << pad_w << "\t"
+              << avg_t
+              << " ms" << std::endl;
 
     CUDA_CHECK(cudaMemcpy(h_y, d_y, output_size * sizeof(Tin), cudaMemcpyDeviceToHost));
 
@@ -149,6 +164,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
 #endif // ENABLE_ILUVATAR
 #endif // ENABLE_LOG
 
+#if ENABLE_COMPARE
 #ifdef ENABLE_ILUVATAR
     for (int i = 0; i < output_size; ++i)
     {
@@ -164,6 +180,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     }
     std::cout << "compare pass!" << std::endl;
 #endif // ENABLE_ILUVATAR
+#endif // ENABLE_COMPARE
 
     delete[] h_x;
     delete[] h_ref_y;
@@ -177,17 +194,27 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
 
 int main()
 {
+    std::cout << "input_n\tinput_c\tinput_h\tinput_w\tkernel_h\tkernel_w\tstride_h\tstride_w\tpad_h\tpad_w" << std::endl;
     std::vector<std::vector<int>> test_cases = {
         // n  c  h  w  kh  kw  sh  sw  ph  pw
-        // {1, 1, 4, 4, 1, 3, 3, 1, 1, 0, 0, 1, 1, 1},
-        // {6, 3, 6, 6, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1},
+
         // {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
 
-        // {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
+        {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
 
-        // {128, 32, 416, 672, 64, 3, 3, 2, 2, 1, 1, 1, 1, 1},
         // {32, 64, 320, 320, 3, 3, 1, 1, 1, 1}
-        {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
+
+        // {32, 64, 320, 320, 3, 3, 1, 1, 1, 1},
+        // {32, 16, 320, 320, 3, 3, 1, 1, 1, 1},
+        // {32, 64, 128, 128, 3, 3, 1, 1, 1, 1},
+        // {16, 64, 256, 256, 3, 3, 1, 1, 1, 1},
+        // {64, 64, 64, 64, 3, 3, 1, 1, 1, 1},
+
+        // {32, 64, 320, 320, 6, 6, 1, 1, 1, 1},
+        // {32, 16, 320, 320, 6, 6, 1, 1, 1, 1},
+        // {32, 64, 128, 128, 6, 6, 1, 1, 1, 1},
+        // {16, 64, 256, 256, 6, 6, 1, 1, 1, 1},
+        // {64, 64, 64, 64, 6, 6, 1, 1, 1, 1},
     };
 
     // using Tin = half;
