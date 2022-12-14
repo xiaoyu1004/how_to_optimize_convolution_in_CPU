@@ -16,7 +16,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
 {
     // std::default_random_engine e(static_cast<unsigned>(time(NULL)));
     std::default_random_engine e(static_cast<unsigned>(1000));
-    std::normal_distribution<float> dist;
+    std::uniform_real_distribution<float> dist(-9, 9);
 
     int input_size = input_n * input_c * input_h * input_w;
     Tin *h_x = new Tin[input_size]{};
@@ -114,6 +114,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     std::cout << input_n << "\t"
               << input_c << "\t"
               << input_h << "\t"
+              << input_w << "\t"
               << kernel_h << "\t"
               << kernel_w << "\t"
               << stride_h << "\t"
@@ -169,7 +170,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     for (int i = 0; i < output_size; ++i)
     {
         Tin diff1 = std::abs(h_ref_y[i] - h_y[i]);
-        if (diff1 > 1e-1f)
+        if (diff1 > 1e-3f)
         {
             std::cout << "ERROR: h_ref_y[" << i << "] = " << h_ref_y[i]
                       << " vs h_y[" << i << "] = " << h_y[i]
@@ -200,7 +201,7 @@ int main()
 
         // {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
 
-        {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
+        // {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
 
         // {32, 64, 320, 320, 3, 3, 1, 1, 1, 1}
 
@@ -215,6 +216,8 @@ int main()
         // {32, 64, 128, 128, 6, 6, 1, 1, 1, 1},
         // {16, 64, 256, 256, 6, 6, 1, 1, 1, 1},
         // {64, 64, 64, 64, 6, 6, 1, 1, 1, 1},
+
+        {32, 64, 320, 320, 320, 320, 1, 1, 0, 0},
     };
 
     // using Tin = half;

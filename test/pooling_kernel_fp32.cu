@@ -7,6 +7,7 @@
 #include <ctime>
 
 #define ENABLE_COMPARE 1
+static constexpr int kNbThreadsPerBlockReduceAllDim = 1024;
 
 typedef unsigned v4u32 __attribute__((ext_vector_type(4)));
 
@@ -60,6 +61,124 @@ __device__ inline void fast_divmod(int &quo, int &rem, int src, int div,
 }
 
 template <typename T>
+__device__ void ReductionSum(int tid, T *sdata, int len)
+{
+    auto pow2 = len;
+    if (pow2 & (pow2 - 1))
+    {
+        while (pow2 & (pow2 - 1))
+        {
+            pow2 &= (pow2 - 1);
+        }
+        if (tid >= pow2)
+        {
+            sdata[tid - pow2] = sdata[tid - pow2] + sdata[tid];
+        }
+        __syncthreads();
+    }
+
+    if (pow2 == 4096)
+    {
+        if (tid < 2048)
+        {
+            sdata[tid] = sdata[tid] + sdata[tid + 2048];
+        }
+        __syncthreads();
+    }
+
+    if (pow2 >= 2048)
+    {
+        if (tid < 1024)
+        {
+            sdata[tid] = sdata[tid] + sdata[tid + 1024];
+        }
+        __syncthreads();
+    }
+
+    if (pow2 >= 1024)
+    {
+        if (tid < 512)
+        {
+            sdata[tid] = sdata[tid] + sdata[tid + 512];
+        }
+        __syncthreads();
+    }
+
+    if (pow2 >= 512)
+    {
+        if (tid < 256)
+        {
+            sdata[tid] = sdata[tid] + sdata[tid + 256];
+        }
+        __syncthreads();
+    }
+
+    if (pow2 >= 256)
+    {
+        if (tid < 128)
+        {
+            sdata[tid] = sdata[tid] + sdata[tid + 128];
+        }
+        __syncthreads();
+    }
+
+#ifndef __BI__
+    if (pow2 >= 128)
+    {
+        if (tid < 64)
+        {
+            sdata[tid] = sdata[tid] + sdata[tid + 64];
+        }
+        __syncthreads();
+    }
+#endif
+
+#if __BI__
+    if (tid < 64)
+    {
+        volatile T *vsdata = sdata;
+        if (pow2 >= 128 && tid < 64)
+        {
+            vsdata[tid] = vsdata[tid] + vsdata[tid + 64];
+        }
+#else
+    if (tid < 32)
+    {
+        volatile T *vsdata = sdata;
+#endif
+        if (pow2 >= 64 && tid < 32)
+        {
+            vsdata[tid] = vsdata[tid] + vsdata[tid + 32];
+        }
+
+        if (pow2 >= 32 && tid < 16)
+        {
+            vsdata[tid] = vsdata[tid] + vsdata[tid + 16];
+        }
+
+        if (pow2 >= 16 && tid < 8)
+        {
+            vsdata[tid] = vsdata[tid] + vsdata[tid + 8];
+        }
+
+        if (pow2 >= 8 && tid < 4)
+        {
+            vsdata[tid] = vsdata[tid] + vsdata[tid + 4];
+        }
+
+        if (pow2 >= 4 && tid < 2)
+        {
+            vsdata[tid] = vsdata[tid] + vsdata[tid + 2];
+        }
+
+        if (pow2 >= 2 && tid < 1)
+        {
+            vsdata[tid] = vsdata[tid] + vsdata[tid + 1];
+        }
+    }
+}
+
+template <typename T>
 __global__ void AveragePool2DForwardNCHWCUDAKernel(
     const int X_H,
     const int X_W,
@@ -77,21 +196,8 @@ __global__ void AveragePool2DForwardNCHWCUDAKernel(
     const T *X,
     T *Y)
 {
-    // v4u32 XBase;
-    // XBase.x = (unsigned)(unsigned long long)X;
-    // XBase.y = (unsigned)((unsigned long long)X >> 32);
-    // XBase.zw = -1u;
-
-    // v4u32 YBase;
-    // YBase.x = (unsigned)(unsigned long long)Y;
-    // YBase.y = (unsigned)((unsigned long long)Y >> 32);
-    // YBase.zw = -1u;
-
     const int X_HxW = X_H * X_W;
     const int Y_HxW = Y_H * Y_W;
-
-    // const int nc = blockIdx.x / Y_H;
-    // const int yh = blockIdx.x % Y_H;
 
     int nc, yh;
     fast_divmod(nc, yh, blockIdx.x, Y_H, mul, shr);
@@ -113,12 +219,41 @@ __global__ void AveragePool2DForwardNCHWCUDAKernel(
             for (int j = l; j < r; ++j)
             {
                 sum += X_ptr[i * X_W + j];
-                // sum += __ivcorex_ml_mem_load_f32(XBase, nc * X_HxW * 4, (i * X_W + j) * 4, 0);
             }
         }
         Y_ptr[yh * Y_W + yw] = sum * scale;
-        // T val = sum * scale;
-        // __ivcorex_ml_mem_store_f32(val, YBase, nc * Y_HxW * 4, (yh * Y_W + yw) * 4, 0);
+    }
+}
+
+template <typename T>
+__global__ void GlobalAveragePool2DForwardNCHWCUDAKernel(
+    const int X_HxW,
+    const T *X,
+    T *Y)
+{
+    const T *X_ptr = X + blockIdx.x * X_HxW;
+
+    __shared__ float sdata[kNbThreadsPerBlockReduceAllDim];
+    sdata[threadIdx.x] = 0.0f; // important
+    __syncthreads();
+
+    int spatial_idx = threadIdx.x;
+    const int tid = threadIdx.x;
+    while (spatial_idx < X_HxW)
+    {
+        // sdata[tid] += UpCast<T, float>(X_ptr[spatial_idx]);
+        sdata[tid] += X_ptr[spatial_idx];
+        spatial_idx += blockDim.x;
+    }
+    const T scale = T(1) / static_cast<T>(X_HxW);
+    __syncthreads();
+    ReductionSum<float>(threadIdx.x, sdata, blockDim.x);
+    __syncthreads();
+
+    if (threadIdx.x == 0)
+    {
+        // Y[blockIdx.x] = DownCast<float, T>(sdata[0] * scale);
+        Y[blockIdx.x] = sdata[0] * scale;
     }
 }
 
@@ -130,7 +265,7 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
 {
     // std::default_random_engine e(static_cast<unsigned>(time(NULL)));
     std::default_random_engine e(static_cast<unsigned>(1000));
-    std::normal_distribution<float> dist;
+    std::uniform_real_distribution<float> dist(-9, 14);
 
     int input_size = input_n * input_c * input_h * input_w;
     Tin *h_x = new Tin[input_size]{};
@@ -185,25 +320,33 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     int mul, shr;
     find_divisor(mul, shr, output_h);
 
-    // 7.Start pooling calculation
-    // #define CUDA_POOLING_FWD                                                                                                                                                                       \
-//     {                                                                                                                                                                                          \
-//         AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, d_x, d_y); \
-//     }
+// 7.Start pooling calculation
+#define CUDA_AVG_POOLING_FWD                                                                                                                                                                             \
+    {                                                                                                                                                                                                    \
+        const int num_blocks = input_n * input_c * output_h;                                                                                                                                             \
+        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, mul, shr, d_x, d_y); \
+    }
+
+#define CUDA_GLOBAL_AVG_POOLING_FWD                                                                                     \
+    {                                                                                                                   \
+        const int num_blocks = input_n * input_c;                                                                       \
+        const int X_HxW = input_h * input_w;                                                                            \
+        GlobalAveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, kNbThreadsPerBlockReduceAllDim>>>(X_HxW, d_x, d_y); \
+    }
 
     // warm
     for (int i = 0; i < warm_cnt; ++i)
     {
-        // CUDA_POOLING_FWD;
-        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, mul, shr, d_x, d_y);
+        // CUDA_AVG_POOLING_FWD;
+        CUDA_GLOBAL_AVG_POOLING_FWD
     }
     CUDA_CHECK(cudaDeviceSynchronize());
 
     CUDA_CHECK(cudaEventRecord(start));
     for (int i = 0; i < loop_cnt; ++i)
     {
-        // CUDA_POOLING_FWD;
-        AveragePool2DForwardNCHWCUDAKernel<Tin><<<num_blocks, CUDA_NUM_THREADS>>>(input_h, input_w, output_h, output_w, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, true, mul, shr, d_x, d_y);
+        // CUDA_AVG_POOLING_FWD;
+        CUDA_GLOBAL_AVG_POOLING_FWD
     }
     CUDA_CHECK(cudaEventRecord(stop));
     CUDA_CHECK(cudaEventSynchronize(stop));
@@ -227,46 +370,12 @@ void TestPooling(int input_n, int input_c, int input_h, int input_w,
     WriteDataToFile("../../data/pooling_dnn_fp32.bin", reinterpret_cast<char *>(h_y), output_size * sizeof(Tin));
 #endif
 
-#ifdef ENABLE_LOG
-#ifdef ENABLE_ILUVATAR
-    std::cout << "cpu:" << std::endl;
-    for (int i = 0; i < output_h; ++i)
-    {
-        for (int j = 0; j < input_c; ++j)
-        {
-            for (int k = 0; k < output_w; ++k)
-            {
-                std::cout << static_cast<Tin *>(h_ref_y)[j * output_h * output_w + i * output_w + k] << "\t";
-            }
-            std::cout << "\t\t";
-        }
-        std::cout << std::endl;
-    }
-
-    std::cout << std::endl;
-
-    std::cout << "gpu(cudnn):" << std::endl;
-    for (int i = 0; i < output_h; ++i)
-    {
-        for (int j = 0; j < input_c; ++j)
-        {
-            for (int k = 0; k < output_w; ++k)
-            {
-                std::cout << static_cast<Tin *>(h_y)[j * output_h * output_w + i * output_w + k] << "\t";
-            }
-            std::cout << "\t\t";
-        }
-        std::cout << std::endl;
-    }
-#endif // ENABLE_ILUVATAR
-#endif // ENABLE_LOG
-
 #if ENABLE_COMPARE
 #ifdef ENABLE_ILUVATAR
     for (int i = 0; i < output_size; ++i)
     {
         Tin diff1 = std::abs(h_ref_y[i] - h_y[i]);
-        if (diff1 > 1e-1f)
+        if (diff1 > 1e-3f)
         {
             std::cout << "ERROR: h_ref_y[" << i << "] = " << h_ref_y[i]
                       << " vs h_y[" << i << "] = " << h_y[i]
@@ -297,7 +406,7 @@ int main()
 
         // {4, 32, 64, 64, 3, 3, 1, 1, 0, 0},
 
-        {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
+        // {1, 2048, 128, 256, 23, 46, 21, 42, 0, 0},
 
         // {32, 64, 320, 320, 3, 3, 1, 1, 1, 1}
 
@@ -312,6 +421,14 @@ int main()
         // {32, 64, 128, 128, 6, 6, 1, 1, 1, 1},
         // {16, 64, 256, 256, 6, 6, 1, 1, 1, 1},
         // {64, 64, 64, 64, 6, 6, 1, 1, 1, 1},
+
+        ///////////////////////////////////////////////////
+
+        {32, 64, 320, 320, 320, 320, 1, 1, 0, 0},
+        // {32, 16, 320, 320, 320, 320, 1, 1, 1, 1},
+        // {32, 64, 128, 128, 128, 128, 1, 1, 1, 1},
+        // {16, 64, 256, 256, 256, 256, 1, 1, 1, 1},
+        // {64, 64, 64, 64, 64, 64, 1, 1, 1, 1},
     };
 
     // using Tin = half;
